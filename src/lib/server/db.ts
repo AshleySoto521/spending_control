@@ -1,25 +1,29 @@
 import pkg from 'pg';
 const { Pool } = pkg;
-import {
-	DATABASE_HOST,
-	DATABASE_PORT,
-	DATABASE_NAME,
-	DATABASE_USER,
-	DATABASE_PASSWORD,
-	DATABASE_SSL
-} from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
-const pool = new Pool({
-	host: DATABASE_HOST,
-	port: parseInt(DATABASE_PORT),
-	database: DATABASE_NAME,
-	user: DATABASE_USER,
-	password: DATABASE_PASSWORD,
-	ssl: DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-	max: 20,
-	idleTimeoutMillis: 30000,
-	connectionTimeoutMillis: 2000
-});
+// Configuración del pool: soporta DATABASE_URL (Neon.tech) o configuración individual
+const poolConfig = env.DATABASE_URL
+	? {
+			connectionString: env.DATABASE_URL,
+			ssl: { rejectUnauthorized: false },
+			max: 20,
+			idleTimeoutMillis: 30000,
+			connectionTimeoutMillis: 2000
+	  }
+	: {
+			host: env.DATABASE_HOST,
+			port: parseInt(env.DATABASE_PORT || '5432'),
+			database: env.DATABASE_NAME,
+			user: env.DATABASE_USER,
+			password: env.DATABASE_PASSWORD,
+			ssl: env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+			max: 20,
+			idleTimeoutMillis: 30000,
+			connectionTimeoutMillis: 2000
+	  };
+
+const pool = new Pool(poolConfig);
 
 pool.on('error', (err) => {
 	console.error('Error inesperado en el cliente de PostgreSQL', err);

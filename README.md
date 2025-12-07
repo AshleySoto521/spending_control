@@ -54,6 +54,10 @@ pnpm install
 
 ### 2. Configurar PostgreSQL
 
+Tienes dos opciones:
+
+#### Opción A: PostgreSQL Local
+
 Crear la base de datos:
 
 ```bash
@@ -67,6 +71,17 @@ Ejecutar el schema inicial:
 ```bash
 psql -U postgres -d control_gastos -f database/schema.sql
 ```
+
+#### Opción B: Neon.tech (PostgreSQL Serverless)
+
+Para usar Neon.tech como base de datos, consulta la guía completa en [NEON_SETUP.md](NEON_SETUP.md).
+
+**Pasos rápidos:**
+1. Crea una cuenta en [neon.tech](https://neon.tech)
+2. Crea un nuevo proyecto
+3. Copia la cadena de conexión
+4. Configura `DATABASE_URL` en tu `.env` (ver paso 4)
+5. Ejecuta el schema desde el SQL Editor de Neon o con psql
 
 ### 3. Ejecutar migraciones (si es necesario)
 
@@ -99,6 +114,8 @@ cp .env.example .env
 
 Edita el archivo `.env` con tus credenciales:
 
+#### Para PostgreSQL Local:
+
 ```env
 # Database
 DATABASE_HOST=localhost
@@ -124,6 +141,30 @@ COOKIE_SECURE=false
 COOKIE_SAME_SITE=lax
 COOKIE_PATH=/
 COOKIE_DOMAIN=localhost
+```
+
+#### Para Neon.tech:
+
+```env
+# Database - Solo necesitas DATABASE_URL
+DATABASE_URL=postgresql://username:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
+
+# Environment
+NODE_ENV=production
+APP_URL=https://tu-dominio.com
+PORT=5173
+
+# JWT
+JWT_SECRET=tu_secreto_super_seguro_cambiar_en_produccion
+
+# Cookies
+COOKIE_NAME=auth_token
+COOKIE_MAX_AGE=14400000
+COOKIE_HTTP_ONLY=true
+COOKIE_SECURE=true  # TRUE en producción
+COOKIE_SAME_SITE=lax
+COOKIE_PATH=/
+COOKIE_DOMAIN=tu-dominio.com
 ```
 
 ### 5. Ejecutar la aplicación
