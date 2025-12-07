@@ -1,0 +1,9 @@
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\schema.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\001_add_pagos_tarjetas.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\002_add_cuotas_msi_view.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\003_add_pago_mensual_view.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\004_update_pago_periodo_view.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\001_add_celular_to_usuarios.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\002_fix_saldo_tarjeta_msi.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\003_add_sessions_and_logs.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\004_add_es_admin_to_usuarios.sql
