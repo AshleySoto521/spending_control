@@ -3,8 +3,10 @@ import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { hashPassword, generateToken } from '$lib/server/auth';
 import { cookieConfig, getCookieOptions } from '$lib/server/cookies';
+import { crearSesion, registrarLog } from '$lib/server/security';
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request, cookies } = event;
 	try {
 		const { nombre, email, celular, password } = await request.json();
 
@@ -44,6 +46,16 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		// Generar token
 		const token = generateToken(user.id_usuario);
+
+		// Crear sesión en la base de datos
+		await crearSesion(user.id_usuario, token, event);
+
+		// Registrar log de registro exitoso
+		await registrarLog('login_exitoso', event, {
+			idUsuario: user.id_usuario,
+			email: user.email,
+			detalles: 'Usuario registrado exitosamente'
+		});
 
 		// Guardar token en cookie
 		cookies.set(cookieConfig.name, token, getCookieOptions());

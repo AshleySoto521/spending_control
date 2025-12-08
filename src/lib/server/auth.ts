@@ -30,7 +30,8 @@ export function generateResetToken(): string {
 }
 
 export function getTokenExpiration(): Date {
+	// Usar UTC para evitar problemas de zona horaria con la base de datos
 	const expiration = new Date();
-	expiration.setHours(expiration.getHours() + 1); // Token válido por 1 hora
+	expiration.setTime(expiration.getTime() + 60 * 60 * 1000); // 1 hora en milisegundos
 	return expiration;
 }
