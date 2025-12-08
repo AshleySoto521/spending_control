@@ -9,7 +9,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		const { nombre, email, celular, password } = await request.json();
 
 		// Validaciones
-		if (!nombre || !celular || !email || !password) {
+		if (!nombre || !email || !celular || !password) {
 			return json({ error: 'Nombre, email, celular y contraseña son requeridos' }, { status: 400 });
 		}
 
