@@ -75,7 +75,7 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Forma de pago no válida' }, { status: 400 });
 		}
 
-		if (!['efectivo', 'transferencia'].includes(formaPagoCheck.rows[0].tipo)) {
+		if (!['EFECTIVO', 'TRANSFERENCIA'].includes(formaPagoCheck.rows[0].tipo.toUpperCase())) {
 			return json({ error: 'Solo se permiten pagos en efectivo o transferencia' }, { status: 400 });
 		}
 

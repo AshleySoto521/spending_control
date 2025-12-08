@@ -55,9 +55,9 @@
 			}
 
 			const data = await response.json();
-			// Filtrar solo efectivo y transferencia
+			// Filtrar solo efectivo y transferencia (comparación case-insensitive)
 			formasPago = (data.formas_pago || []).filter((fp: any) =>
-				fp.tipo === 'efectivo' || fp.tipo === 'transferencia'
+				fp.tipo.toUpperCase() === 'EFECTIVO' || fp.tipo.toUpperCase() === 'TRANSFERENCIA'
 			);
 		} catch (err: any) {
 			error = err.message;

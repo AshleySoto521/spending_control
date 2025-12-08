@@ -49,7 +49,7 @@ export const GET: RequestHandler = async (event) => {
 			JOIN formas_pago fp ON e.id_forma_pago = fp.id_forma_pago
 			WHERE e.id_usuario = $1
 			AND e.id_tarjeta IS NULL
-			AND fp.tipo IN ('efectivo', 'transferencia')`,
+			AND UPPER(fp.tipo) IN ('EFECTIVO', 'TRANSFERENCIA')`,
 			[userId]
 		);
 
