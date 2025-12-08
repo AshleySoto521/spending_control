@@ -97,6 +97,21 @@
 			<div class="hidden md:ml-6 md:flex md:items-center">
 				<div class="ml-3 relative">
 					<div class="flex items-center space-x-4">
+						<a
+							href="/ayuda"
+							class="text-sm text-gray-700 hover:text-gray-900 transition flex items-center gap-1"
+							title="Centro de Ayuda"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
+							</svg>
+							Ayuda
+						</a>
 						<a href="/perfil" class="text-sm text-gray-700 hover:text-gray-900 transition">
 							{$authStore.user?.nombre || 'Usuario'}
 						</a>
@@ -204,6 +219,20 @@
 					<div class="text-sm font-medium text-gray-500">{$authStore.user?.email || ''}</div>
 				</div>
 				<div class="mt-3 px-2 space-y-1">
+					<a
+						href="/ayuda"
+						class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 flex items-center gap-2"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+						Centro de Ayuda
+					</a>
 					<a
 						href="/perfil"
 						class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
