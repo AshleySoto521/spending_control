@@ -34,7 +34,8 @@
 				throw new Error('Error al cargar tarjetas');
 			}
 
-			tarjetas = await response.json();
+			const data = await response.json();
+			tarjetas = data.tarjetas || [];
 		} catch (err: any) {
 			error = err.message;
 		}

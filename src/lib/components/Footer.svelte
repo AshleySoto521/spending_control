@@ -9,6 +9,10 @@
 				>
 					contactoaquastudio@gmail.com
 				</a>
+				
+			</p>
+			<p class="text-gray-900 hover:text-gray-700 font-medium transition-colors">
+				&copy; {new Date().getFullYear()} Aqua Studio. Todos los derechos reservados.
 			</p>
 		</div>
 	</div>

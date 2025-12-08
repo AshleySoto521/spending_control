@@ -21,12 +21,13 @@
 </script>
 
 <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-		<div class="flex justify-between h-16">
+	<div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+		<div class="flex justify-between h-14 sm:h-16">
 			<div class="flex">
 				<div class="shrink-0 flex items-center">
-					<a href="/dashboard" class="text-2xl font-bold text-gray-900">
-						Control Gastos
+					<a href="/dashboard" class="font-bold text-gray-900">
+						<span class="hidden sm:inline text-2xl">Control Gastos</span>
+						<span class="sm:hidden text-xl">💰 Control $</span>
 					</a>
 				</div>
 				<div class="hidden md:ml-10 md:flex md:space-x-8">
@@ -127,13 +128,14 @@
 			<div class="flex items-center md:hidden">
 				<button
 					onclick={() => mobileMenuOpen = !mobileMenuOpen}
-					class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+					class="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+					aria-label="Menú"
 				>
-					<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 						{#if mobileMenuOpen}
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 						{:else}
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+							<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
 						{/if}
 					</svg>
 				</button>
@@ -142,86 +144,86 @@
 	</div>
 
 	{#if mobileMenuOpen}
-		<div class="md:hidden border-t border-gray-200">
-			<div class="pt-2 pb-3 space-y-1">
+		<div class="md:hidden border-t border-gray-200 bg-white">
+			<div class="pt-2 pb-3 space-y-1 px-2">
 				<a
 					href="/dashboard"
-					class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
 					class:border-gray-800={$page.url.pathname === '/dashboard'}
 					class:bg-gray-50={$page.url.pathname === '/dashboard'}
 					class:text-gray-900={$page.url.pathname === '/dashboard'}
 					class:border-transparent={$page.url.pathname !== '/dashboard'}
-					class:text-gray-600={$page.url.pathname !== '/dashboard'}
+					class:text-gray-700={$page.url.pathname !== '/dashboard'}
 				>
-					Dashboard
+					📊 Dashboard
 				</a>
 				<a
 					href="/tarjetas"
-					class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
 					class:border-gray-800={$page.url.pathname.startsWith('/tarjetas')}
 					class:bg-gray-50={$page.url.pathname.startsWith('/tarjetas')}
 					class:text-gray-900={$page.url.pathname.startsWith('/tarjetas')}
 					class:border-transparent={!$page.url.pathname.startsWith('/tarjetas')}
-					class:text-gray-600={!$page.url.pathname.startsWith('/tarjetas')}
+					class:text-gray-700={!$page.url.pathname.startsWith('/tarjetas')}
 				>
-					Tarjetas
+					💳 Tarjetas
 				</a>
 				<a
 					href="/ingresos"
-					class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
 					class:border-gray-800={$page.url.pathname.startsWith('/ingresos')}
 					class:bg-gray-50={$page.url.pathname.startsWith('/ingresos')}
 					class:text-gray-900={$page.url.pathname.startsWith('/ingresos')}
 					class:border-transparent={!$page.url.pathname.startsWith('/ingresos')}
-					class:text-gray-600={!$page.url.pathname.startsWith('/ingresos')}
+					class:text-gray-700={!$page.url.pathname.startsWith('/ingresos')}
 				>
-					Ingresos
+					💵 Ingresos
 				</a>
 				<a
 					href="/egresos"
-					class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
 					class:border-gray-800={$page.url.pathname.startsWith('/egresos')}
 					class:bg-gray-50={$page.url.pathname.startsWith('/egresos')}
 					class:text-gray-900={$page.url.pathname.startsWith('/egresos')}
 					class:border-transparent={!$page.url.pathname.startsWith('/egresos')}
-					class:text-gray-600={!$page.url.pathname.startsWith('/egresos')}
+					class:text-gray-700={!$page.url.pathname.startsWith('/egresos')}
 				>
-					Egresos
+					💸 Egresos
 				</a>
 				<a
 					href="/pagos-tarjetas"
-					class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
 					class:border-gray-800={$page.url.pathname.startsWith('/pagos-tarjetas')}
 					class:bg-gray-50={$page.url.pathname.startsWith('/pagos-tarjetas')}
 					class:text-gray-900={$page.url.pathname.startsWith('/pagos-tarjetas')}
 					class:border-transparent={!$page.url.pathname.startsWith('/pagos-tarjetas')}
-					class:text-gray-600={!$page.url.pathname.startsWith('/pagos-tarjetas')}
+					class:text-gray-700={!$page.url.pathname.startsWith('/pagos-tarjetas')}
 				>
-					Pagos Tarjetas
+					💰 Pagos Tarjetas
 				</a>
 				{#if $authStore.user?.es_admin}
 					<a
 						href="/admin"
-						class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+						class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
 						class:border-gray-800={$page.url.pathname.startsWith('/admin')}
 						class:bg-gray-50={$page.url.pathname.startsWith('/admin')}
 						class:text-gray-900={$page.url.pathname.startsWith('/admin')}
 						class:border-transparent={!$page.url.pathname.startsWith('/admin')}
-						class:text-gray-600={!$page.url.pathname.startsWith('/admin')}
+						class:text-gray-700={!$page.url.pathname.startsWith('/admin')}
 					>
-						Administración
+						⚙️ Administración
 					</a>
 				{/if}
 			</div>
-			<div class="pt-4 pb-3 border-t border-gray-200">
-				<div class="px-4">
-					<div class="text-base font-medium text-gray-800">{$authStore.user?.nombre || 'Usuario'}</div>
-					<div class="text-sm font-medium text-gray-500">{$authStore.user?.email || ''}</div>
+			<div class="pt-4 pb-4 border-t border-gray-200 bg-gray-50">
+				<div class="px-4 mb-3">
+					<div class="text-base font-semibold text-gray-900">{$authStore.user?.nombre || 'Usuario'}</div>
+					<div class="text-sm text-gray-600">{$authStore.user?.email || ''}</div>
 				</div>
-				<div class="mt-3 px-2 space-y-1">
+				<div class="px-2 space-y-1">
 					<a
 						href="/ayuda"
-						class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 flex items-center gap-2"
+						class="block w-full text-left px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white active:bg-gray-100 flex items-center gap-2 transition-colors"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -235,15 +237,15 @@
 					</a>
 					<a
 						href="/perfil"
-						class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+						class="block w-full text-left px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white active:bg-gray-100 transition-colors"
 					>
-						Mi Perfil
+						👤 Mi Perfil
 					</a>
 					<button
 						onclick={handleLogout}
-						class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+						class="block w-full text-left px-3 py-3 rounded-lg text-base font-medium text-red-600 hover:text-red-700 hover:bg-white active:bg-gray-100 transition-colors"
 					>
-						Cerrar Sesión
+						🚪 Cerrar Sesión
 					</button>
 				</div>
 			</div>
