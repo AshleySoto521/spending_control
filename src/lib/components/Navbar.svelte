@@ -74,12 +74,22 @@
 					<a
 						href="/pagos-tarjetas"
 						class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition"
-						class:border-gray-800={$page.url.pathname.startsWith('/pagos-tarjetas')}
-						class:text-gray-900={$page.url.pathname.startsWith('/pagos-tarjetas')}
-						class:border-transparent={!$page.url.pathname.startsWith('/pagos-tarjetas')}
-						class:text-gray-500={!$page.url.pathname.startsWith('/pagos-tarjetas')}
+						class:border-gray-800={$page.url.pathname === '/pagos-tarjetas'}
+						class:text-gray-900={$page.url.pathname === '/pagos-tarjetas'}
+						class:border-transparent={$page.url.pathname !== '/pagos-tarjetas'}
+						class:text-gray-500={$page.url.pathname !== '/pagos-tarjetas'}
 					>
 						Pagos Tarjetas
+					</a>
+					<a
+						href="/proximos-pagos-tarjetas"
+						class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition"
+						class:border-gray-800={$page.url.pathname === '/proximos-pagos-tarjetas'}
+						class:text-gray-900={$page.url.pathname === '/proximos-pagos-tarjetas'}
+						class:border-transparent={$page.url.pathname !== '/proximos-pagos-tarjetas'}
+						class:text-gray-500={$page.url.pathname !== '/proximos-pagos-tarjetas'}
+					>
+						Próximos Pagos
 					</a>
 					{#if $authStore.user?.es_admin}
 						<a
@@ -193,13 +203,24 @@
 				<a
 					href="/pagos-tarjetas"
 					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
-					class:border-gray-800={$page.url.pathname.startsWith('/pagos-tarjetas')}
-					class:bg-gray-50={$page.url.pathname.startsWith('/pagos-tarjetas')}
-					class:text-gray-900={$page.url.pathname.startsWith('/pagos-tarjetas')}
-					class:border-transparent={!$page.url.pathname.startsWith('/pagos-tarjetas')}
-					class:text-gray-700={!$page.url.pathname.startsWith('/pagos-tarjetas')}
+					class:border-gray-800={$page.url.pathname === '/pagos-tarjetas'}
+					class:bg-gray-50={$page.url.pathname === '/pagos-tarjetas'}
+					class:text-gray-900={$page.url.pathname === '/pagos-tarjetas'}
+					class:border-transparent={$page.url.pathname !== '/pagos-tarjetas'}
+					class:text-gray-700={$page.url.pathname !== '/pagos-tarjetas'}
 				>
 					💰 Pagos Tarjetas
+				</a>
+				<a
+					href="/proximos-pagos-tarjetas"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
+					class:border-gray-800={$page.url.pathname === '/proximos-pagos-tarjetas'}
+					class:bg-gray-50={$page.url.pathname === '/proximos-pagos-tarjetas'}
+					class:text-gray-900={$page.url.pathname === '/proximos-pagos-tarjetas'}
+					class:border-transparent={$page.url.pathname !== '/proximos-pagos-tarjetas'}
+					class:text-gray-700={$page.url.pathname !== '/proximos-pagos-tarjetas'}
+				>
+					📅 Próximos Pagos
 				</a>
 				{#if $authStore.user?.es_admin}
 					<a

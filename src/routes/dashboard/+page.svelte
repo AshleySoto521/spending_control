@@ -166,7 +166,18 @@
 				<!-- Próximos Pagos -->
 				{#if dashboardData.proximos_pagos && dashboardData.proximos_pagos.length > 0}
 					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-						<h2 class="text-lg font-bold text-gray-900 mb-4">Próximos Pagos de Tarjetas</h2>
+						<div class="flex justify-between items-center mb-4">
+							<h2 class="text-lg font-bold text-gray-900">Próximos Pagos de Tarjetas</h2>
+							<a
+								href="/proximos-pagos-tarjetas"
+								class="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
+							>
+								Ver todos
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+								</svg>
+							</a>
+						</div>
 						<div class="space-y-3">
 							{#each dashboardData.proximos_pagos as pago}
 								<div class="flex justify-between items-start p-3 bg-gray-50 rounded-lg border border-gray-200">

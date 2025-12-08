@@ -168,6 +168,7 @@ export const GET: RequestHandler = async (event) => {
 		);
 
 		// Próximos pagos de tarjetas (solo del periodo actual)
+		// Solo muestra tarjetas con pago pendiente del periodo > 0
 		const proximosPagos = await query(
 			`SELECT
 				v.id_tarjeta,
@@ -186,7 +187,7 @@ export const GET: RequestHandler = async (event) => {
 			FROM v_pago_mensual_tarjetas v
 			WHERE v.id_usuario = $1
 			AND v.dia_corte IS NOT NULL
-			AND (v.pago_periodo > 0 OR v.saldo_total > 0)
+			AND v.pago_periodo > 0
 			ORDER BY fecha_limite_pago ASC
 			LIMIT 5`,
 			[userId]
