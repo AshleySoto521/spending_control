@@ -130,6 +130,10 @@
 			currency: 'MXN'
 		}).format(amount);
 	}
+
+	function formatDate(dateString: string): string {
+		return new Date(dateString).toLocaleDateString('es-MX', { timeZone: 'UTC' });
+	}
 </script>
 
 <ProtectedRoute>
@@ -186,7 +190,7 @@
 						{#each ingresos as ingreso}
 							<tr class="hover:bg-gray-50">
 								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-									{new Date(ingreso.fecha_ingreso).toLocaleDateString('es-MX')}
+									{formatDate(ingreso.fecha_ingreso)}
 								</td>
 								<td class="px-6 py-4 text-sm text-gray-900">
 									{ingreso.tipo_ingreso}

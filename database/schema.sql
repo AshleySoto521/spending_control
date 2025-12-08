@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS egresos (
     descripcion TEXT,
     -- Campos para compras a meses
     compra_meses BOOLEAN DEFAULT FALSE,
-    num_meses INTEGER CHECK (num_meses IN (3, 6, 9, 12, 18, 24, 36, 48)),
+    num_meses INTEGER CHECK (num_meses IN (3, 6, 9, 12, 15, 18, 24, 36, 48)),
     mes_inicio_pago INTEGER CHECK (mes_inicio_pago >= 0 AND mes_inicio_pago <= 12),
     monto_mensual DECIMAL(12, 2),
     meses_pagados INTEGER DEFAULT 0,

@@ -4,6 +4,11 @@ import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
 import * as XLSX from 'xlsx';
 
+// Función auxiliar para formatear fechas sin conversión de zona horaria
+function formatDate(dateString: string): string {
+	return new Date(dateString).toLocaleDateString('es-MX', { timeZone: 'UTC' });
+}
+
 export const GET: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
@@ -77,7 +82,7 @@ export const GET: RequestHandler = async (event) => {
 		// Agregar ingresos
 		ingresosResult.rows.forEach((ingreso: any) => {
 			movimientos.push({
-				Fecha: new Date(ingreso.fecha).toLocaleDateString('es-MX'),
+				Fecha: formatDate(ingreso.fecha),
 				Ingreso: parseFloat(ingreso.monto),
 				Egreso: 0,
 				Concepto: ingreso.tipo_ingreso,
@@ -89,7 +94,7 @@ export const GET: RequestHandler = async (event) => {
 		// Agregar egresos
 		egresosResult.rows.forEach((egreso: any) => {
 			movimientos.push({
-				Fecha: new Date(egreso.fecha).toLocaleDateString('es-MX'),
+				Fecha: formatDate(egreso.fecha),
 				Ingreso: 0,
 				Egreso: parseFloat(egreso.monto),
 				Concepto: egreso.concepto,
@@ -132,7 +137,7 @@ export const GET: RequestHandler = async (event) => {
 
 		// HOJA 2: Resumen de Ingresos
 		const ingresosData = ingresosResult.rows.map((ingreso: any) => ({
-			Fecha: new Date(ingreso.fecha).toLocaleDateString('es-MX'),
+			Fecha: formatDate(ingreso.fecha),
 			Tipo: ingreso.tipo_ingreso,
 			Monto: parseFloat(ingreso.monto),
 			'Forma de Pago': ingreso.forma_pago || '',
@@ -176,7 +181,7 @@ export const GET: RequestHandler = async (event) => {
 			}
 
 			return {
-				Fecha: new Date(egreso.fecha).toLocaleDateString('es-MX'),
+				Fecha: formatDate(egreso.fecha),
 				Concepto: egreso.concepto,
 				Establecimiento: egreso.establecimiento || '',
 				Monto: parseFloat(egreso.monto),
@@ -227,7 +232,7 @@ export const GET: RequestHandler = async (event) => {
 
 			if (egresosTarjeta.length > 0) {
 				const tarjetaData = egresosTarjeta.map((egreso: any) => ({
-					Fecha: new Date(egreso.fecha).toLocaleDateString('es-MX'),
+					Fecha: formatDate(egreso.fecha),
 					Concepto: egreso.concepto,
 					Establecimiento: egreso.establecimiento || '',
 					Monto: parseFloat(egreso.monto),

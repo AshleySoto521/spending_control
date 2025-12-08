@@ -4,6 +4,16 @@ import { query } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/middleware';
 import * as XLSX from 'xlsx';
 
+// Función auxiliar para formatear fechas sin conversión de zona horaria
+function formatDate(dateString: string): string {
+	return new Date(dateString).toLocaleDateString('es-MX', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric',
+		timeZone: 'UTC'
+	});
+}
+
 export const GET: RequestHandler = async (event) => {
 	try {
 		await requireAdmin(event);
@@ -26,11 +36,7 @@ export const GET: RequestHandler = async (event) => {
 			Email: usuario.email,
 			'Teléfono': usuario.celular,
 			'Tarjetas': usuario.total_tarjetas,
-			'Miembro desde': new Date(usuario.fecha_registro).toLocaleDateString('es-MX', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric'
-			})
+			'Miembro desde': formatDate(usuario.fecha_registro)
 		}));
 
 		// Crear libro de Excel

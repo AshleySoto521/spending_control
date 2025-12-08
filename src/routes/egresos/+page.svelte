@@ -169,6 +169,10 @@
 		}).format(amount);
 	}
 
+	function formatDate(dateString: string): string {
+		return new Date(dateString).toLocaleDateString('es-MX', { timeZone: 'UTC' });
+	}
+
 	// Computed: egresos filtrados
 	let egresosFiltrados = $derived.by(() => {
 		if (filtroTarjeta === null) {
@@ -258,7 +262,7 @@
 									</div>
 									{#if resumenSinTarjeta.ultimo_egreso}
 										<div class="text-xs text-gray-500 mt-2">
-											Último: {new Date(resumenSinTarjeta.ultimo_egreso).toLocaleDateString('es-MX')}
+											Último: {formatDate(resumenSinTarjeta.ultimo_egreso)}
 										</div>
 									{/if}
 								</div>
@@ -319,7 +323,7 @@
 
 									{#if tarjeta.ultimo_egreso}
 										<div class="text-xs text-gray-500 mt-2">
-											Último: {new Date(tarjeta.ultimo_egreso).toLocaleDateString('es-MX')}
+											Último: {formatDate(tarjeta.ultimo_egreso)}
 										</div>
 									{/if}
 								</div>
@@ -370,7 +374,7 @@
 							{#each egresosFiltrados as egreso}
 								<tr class="hover:bg-gray-50">
 									<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-										{new Date(egreso.fecha_egreso).toLocaleDateString('es-MX')}
+										{formatDate(egreso.fecha_egreso)}
 									</td>
 									<td class="px-6 py-4 text-sm text-gray-900">
 										{egreso.concepto}
@@ -555,6 +559,7 @@
 												<option value="6">6 meses</option>
 												<option value="9">9 meses</option>
 												<option value="12">12 meses</option>
+												<option value="15">15 meses</option>
 												<option value="18">18 meses</option>
 												<option value="24">24 meses</option>
 												<option value="36">36 meses</option>

@@ -175,6 +175,10 @@
 			currency: 'MXN'
 		}).format(amount);
 	}
+
+	function formatDate(dateString: string): string {
+		return new Date(dateString).toLocaleDateString('es-MX', { timeZone: 'UTC' });
+	}
 </script>
 
 <ProtectedRoute>
@@ -330,7 +334,7 @@
 									{#each pagos as pago}
 										<tr>
 											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-												{new Date(pago.fecha_pago).toLocaleDateString('es-MX')}
+												{formatDate(pago.fecha_pago)}
 											</td>
 											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
 												{pago.nom_tarjeta}

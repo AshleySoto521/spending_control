@@ -41,6 +41,13 @@
 		}).format(amount);
 	}
 
+	function formatDate(dateString: string, options: Intl.DateTimeFormatOptions = {}): string {
+		return new Date(dateString).toLocaleDateString('es-MX', {
+			...options,
+			timeZone: 'UTC'
+		});
+	}
+
 	async function marcarCuotaPagada(idEgreso: number) {
 		try {
 			const token = $authStore.token;
@@ -167,17 +174,17 @@
 										<p class="text-sm font-medium text-gray-900">{pago.nom_tarjeta}</p>
 										<p class="text-xs text-gray-500">{pago.banco || 'Banco'}</p>
 										<p class="text-xs text-gray-600 mt-1">
-											Periodo: {new Date(pago.fecha_corte_anterior).toLocaleDateString('es-MX', {
+											Periodo: {formatDate(pago.fecha_corte_anterior, {
 												day: '2-digit',
 												month: '2-digit'
-											})} al {new Date(pago.fecha_corte).toLocaleDateString('es-MX', {
+											})} al {formatDate(pago.fecha_corte, {
 												day: '2-digit',
 												month: '2-digit',
 												year: 'numeric'
 											})}
 										</p>
 										<p class="text-xs text-gray-600 mt-1">
-											Límite de pago: {new Date(pago.fecha_limite_pago).toLocaleDateString('es-MX', {
+											Límite de pago: {formatDate(pago.fecha_limite_pago, {
 												day: 'numeric',
 												month: 'long',
 												year: 'numeric'
@@ -234,7 +241,7 @@
 										</p>
 										{#if cuota.fecha_proxima_cuota}
 											<p class="text-xs text-gray-600 mt-1">
-												Próxima cuota: {new Date(cuota.fecha_proxima_cuota).toLocaleDateString('es-MX', {
+												Próxima cuota: {formatDate(cuota.fecha_proxima_cuota, {
 													day: 'numeric',
 													month: 'long',
 													year: 'numeric'
@@ -356,7 +363,7 @@
 												</span>
 											</td>
 											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-												{new Date(movimiento.fecha).toLocaleDateString('es-MX')}
+												{formatDate(movimiento.fecha)}
 											</td>
 											<td class="px-6 py-4 text-sm text-gray-900">
 												{movimiento.descripcion}

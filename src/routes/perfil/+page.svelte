@@ -137,7 +137,8 @@
 		return new Date(dateString).toLocaleDateString('es-MX', {
 			year: 'numeric',
 			month: 'long',
-			day: 'numeric'
+			day: 'numeric',
+			timeZone: 'UTC'
 		});
 	}
 </script>
