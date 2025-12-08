@@ -22,7 +22,7 @@ export const PUT: RequestHandler = async (event) => {
 
 		// Validar compras a meses si se especifica
 		if (data.compra_meses) {
-			if (data.num_meses && ![3, 6, 9, 12, 18, 24, 36, 48].includes(data.num_meses)) {
+			if (data.num_meses && ![3, 6, 9, 12, 15, 18, 24, 36, 48].includes(data.num_meses)) {
 				return json({ error: 'Número de meses inválido' }, { status: 400 });
 			}
 			if (data.mes_inicio_pago !== undefined && (data.mes_inicio_pago < 0 || data.mes_inicio_pago > 12)) {

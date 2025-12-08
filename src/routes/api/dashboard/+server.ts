@@ -27,10 +27,21 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
+		// Pagos de tarjeta (debitan del saldo actual cuando se pagan en efectivo/transferencia)
+		const totalPagosTarjeta = await query(
+			`SELECT COALESCE(SUM(pt.monto), 0) as total
+			FROM pagos_tarjetas pt
+			JOIN formas_pago fp ON pt.id_forma_pago = fp.id_forma_pago
+			WHERE pt.id_usuario = $1
+			AND UPPER(fp.tipo) IN ('EFECTIVO', 'TRANSFERENCIA')`,
+			[userId]
+		);
+
 		const resumenFinanciero = {
 			total_ingresos: totalIngresos.rows[0].total,
 			total_egresos: totalEgresos.rows[0].total,
-			saldo_actual: parseFloat(totalIngresos.rows[0].total) - parseFloat(totalEgresos.rows[0].total)
+			total_pagos_tarjeta: totalPagosTarjeta.rows[0].total,
+			saldo_actual: parseFloat(totalIngresos.rows[0].total) - parseFloat(totalEgresos.rows[0].total) - parseFloat(totalPagosTarjeta.rows[0].total)
 		};
 
 		// Deuda total de tarjetas
