@@ -223,7 +223,7 @@
 				<div class="px-2 space-y-1">
 					<a
 						href="/ayuda"
-						class="block w-full text-left px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white active:bg-gray-100 flex items-center gap-2 transition-colors"
+						class="w-full text-left px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white active:bg-gray-100 flex items-center gap-2 transition-colors"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
