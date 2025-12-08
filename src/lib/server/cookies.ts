@@ -1,22 +1,13 @@
-import {
-	COOKIE_NAME,
-	COOKIE_MAX_AGE,
-	COOKIE_HTTP_ONLY,
-	COOKIE_SECURE,
-	COOKIE_SAME_SITE,
-	COOKIE_PATH,
-	COOKIE_DOMAIN,
-	NODE_ENV
-} from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export const cookieConfig = {
-	name: COOKIE_NAME || 'auth_token',
-	maxAge: parseInt(COOKIE_MAX_AGE || '604800000'), // 7 días en milisegundos
-	httpOnly: COOKIE_HTTP_ONLY === 'true',
-	secure: COOKIE_SECURE === 'true' || NODE_ENV === 'production',
-	sameSite: (COOKIE_SAME_SITE || 'lax') as 'strict' | 'lax' | 'none',
-	path: COOKIE_PATH || '/',
-	domain: COOKIE_DOMAIN !== 'localhost' ? COOKIE_DOMAIN : undefined
+	name: env.COOKIE_NAME || 'auth_token',
+	maxAge: parseInt(env.COOKIE_MAX_AGE || '604800000'), // 7 días en milisegundos
+	httpOnly: env.COOKIE_HTTP_ONLY === 'true',
+	secure: env.COOKIE_SECURE === 'true' || env.NODE_ENV === 'production',
+	sameSite: (env.COOKIE_SAME_SITE || 'lax') as 'strict' | 'lax' | 'none',
+	path: env.COOKIE_PATH || '/',
+	domain: env.COOKIE_DOMAIN && env.COOKIE_DOMAIN !== 'localhost' ? env.COOKIE_DOMAIN : undefined
 };
 
 export function getCookieOptions() {
