@@ -104,6 +104,7 @@
 					maxlength="10"
 					class="input-minimal"
 					placeholder="5512345678"
+					oninput={() => celular = celular.replace(/\D/g, '')}
 				/>
 				<p class="mt-1 text-sm text-gray-500">10 dígitos sin espacios ni guiones</p>
 			</div>
