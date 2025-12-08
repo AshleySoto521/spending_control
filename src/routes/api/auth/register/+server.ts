@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		// Insertar usuario
 		const result = await query(
 			'INSERT INTO usuarios (nombre, email, celular, password_hash) VALUES ($1, $2, $3, $4) RETURNING id_usuario, nombre, email, celular',
-			[nombre, email, celular || null, passwordHash]
+			[nombre, email, celular, passwordHash]
 		);
 
 		const user = result.rows[0];
