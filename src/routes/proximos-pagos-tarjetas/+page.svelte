@@ -4,6 +4,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { apiGet } from '$lib/utils/apiClient';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -12,11 +13,7 @@
 	async function loadProximosPagos() {
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/proximos-pagos-tarjetas', {
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiGet('/api/proximos-pagos-tarjetas', token);
 
 			if (!response.ok) {
 				throw new Error('Error al cargar próximos pagos');
@@ -25,7 +22,9 @@
 			const data = await response.json();
 			proximosPagos = data.proximos_pagos || [];
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		} finally {
 			loading = false;
 		}

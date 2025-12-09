@@ -3,20 +3,19 @@
 	import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
+	import WelcomeModal from '$lib/components/WelcomeModal.svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { apiGet, apiPost } from '$lib/utils/apiClient';
 
 	let loading = $state(true);
 	let error = $state('');
 	let dashboardData: any = $state(null);
+	let showWelcomeModal = $state(false);
 
 	async function loadDashboard() {
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/dashboard', {
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiGet('/api/dashboard', token);
 
 			if (!response.ok) {
 				throw new Error('Error al cargar dashboard');
@@ -24,14 +23,37 @@
 
 			dashboardData = await response.json();
 		} catch (err: any) {
-			error = err.message;
+			// Los errores 401/403 ya fueron manejados por apiClient
+			// Solo mostrar otros errores aquí
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		} finally {
 			loading = false;
 		}
 	}
 
+	function checkFirstTimeUser() {
+		// Verificar si ya se mostró el modal de bienvenida
+		const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+
+		if (!hasSeenWelcome) {
+			// Mostrar modal solo después de cargar el dashboard
+			setTimeout(() => {
+				showWelcomeModal = true;
+			}, 500);
+		}
+	}
+
+	function handleCloseWelcome() {
+		showWelcomeModal = false;
+		// Marcar como visto en localStorage
+		localStorage.setItem('hasSeenWelcome', 'true');
+	}
+
 	onMount(() => {
 		loadDashboard();
+		checkFirstTimeUser();
 	});
 
 	function formatCurrency(amount: number): string {
@@ -51,12 +73,7 @@
 	async function marcarCuotaPagada(idEgreso: number) {
 		try {
 			const token = $authStore.token;
-			const response = await fetch(`/api/egresos/${idEgreso}/meses-pagados`, {
-				method: 'POST',
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiPost(`/api/egresos/${idEgreso}/meses-pagados`, token, {});
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -66,10 +83,13 @@
 			// Recargar dashboard
 			await loadDashboard();
 		} catch (err: any) {
-			error = err.message;
-			setTimeout(() => {
-				error = '';
-			}, 3000);
+			// Los errores 401/403 ya fueron manejados por apiClient
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+				setTimeout(() => {
+					error = '';
+				}, 3000);
+			}
 		}
 	}
 </script>
@@ -398,4 +418,12 @@
 		</div>
 	</div>
 	<Footer />
+
+	<!-- Modal de Bienvenida -->
+	{#if showWelcomeModal}
+		<WelcomeModal
+			userName={$authStore.user?.nombre || 'Usuario'}
+			onClose={handleCloseWelcome}
+		/>
+	{/if}
 </ProtectedRoute>

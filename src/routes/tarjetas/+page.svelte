@@ -4,6 +4,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { apiGet, apiPost, apiPut, apiDelete } from '$lib/utils/apiClient';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -24,18 +25,16 @@
 	async function loadTarjetas() {
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/tarjetas', {
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiGet('/api/tarjetas', token);
 
 			if (!response.ok) throw new Error('Error al cargar tarjetas');
 
 			const data = await response.json();
 			tarjetas = data.tarjetas;
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		} finally {
 			loading = false;
 		}
@@ -45,21 +44,16 @@
 		try {
 			const token = $authStore.token;
 			const url = editingId ? `/api/tarjetas/${editingId}` : '/api/tarjetas';
-			const method = editingId ? 'PUT' : 'POST';
+			const body = {
+				...formData,
+				linea_credito: formData.tipo_tarjeta === 'SERVICIOS' ? null : (formData.linea_credito ? parseFloat(formData.linea_credito) : 0),
+				dia_corte: formData.dia_corte ? parseInt(formData.dia_corte) : null,
+				dias_gracia: formData.dias_gracia ? parseInt(formData.dias_gracia) : null
+			};
 
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					...formData,
-					linea_credito: formData.tipo_tarjeta === 'SERVICIOS' ? null : (formData.linea_credito ? parseFloat(formData.linea_credito) : 0),
-					dia_corte: formData.dia_corte ? parseInt(formData.dia_corte) : null,
-					dias_gracia: formData.dias_gracia ? parseInt(formData.dias_gracia) : null
-				})
-			});
+			const response = editingId
+				? await apiPut(url, token, body)
+				: await apiPost(url, token, body);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -69,7 +63,9 @@
 			closeModal();
 			loadTarjetas();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
@@ -108,10 +104,7 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch(`/api/tarjetas/${id}`, {
-				method: 'DELETE',
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
+			const response = await apiDelete(`/api/tarjetas/${id}`, token);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -120,7 +113,9 @@
 
 			loadTarjetas();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
@@ -129,14 +124,7 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch(`/api/tarjetas/${id}`, {
-				method: 'PUT',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ activa: true })
-			});
+			const response = await apiPut(`/api/tarjetas/${id}`, token, { activa: true });
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -145,7 +133,9 @@
 
 			loadTarjetas();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 

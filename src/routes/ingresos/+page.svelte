@@ -5,6 +5,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import ExportModal from '$lib/components/ExportModal.svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { apiGet, apiPost, apiPut, apiDelete } from '$lib/utils/apiClient';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -26,9 +27,7 @@
 			const token = $authStore.token;
 
 			const [ingresosRes, formasPagoRes] = await Promise.all([
-				fetch('/api/ingresos', {
-					headers: { 'Authorization': `Bearer ${token}` }
-				}),
+				apiGet('/api/ingresos', token),
 				fetch('/api/formas-pago')
 			]);
 
@@ -40,7 +39,9 @@
 			ingresos = ingresosData.ingresos;
 			formasPago = formasPagoData.formas_pago;
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		} finally {
 			loading = false;
 		}
@@ -66,20 +67,15 @@
 		try {
 			const token = $authStore.token;
 			const url = editingId ? `/api/ingresos/${editingId}` : '/api/ingresos';
-			const method = editingId ? 'PUT' : 'POST';
+			const body = {
+				...formData,
+				monto: parseFloat(formData.monto),
+				id_forma_pago: parseInt(formData.id_forma_pago)
+			};
 
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					...formData,
-					monto: parseFloat(formData.monto),
-					id_forma_pago: parseInt(formData.id_forma_pago)
-				})
-			});
+			const response = editingId
+				? await apiPut(url, token, body)
+				: await apiPost(url, token, body);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -97,7 +93,9 @@
 			};
 			loadData();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
@@ -106,15 +104,14 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch(`/api/ingresos/${id}`, {
-				method: 'DELETE',
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
+			const response = await apiDelete(`/api/ingresos/${id}`, token);
 
 			if (!response.ok) throw new Error('Error al eliminar');
 			loadData();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 

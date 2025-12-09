@@ -4,6 +4,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { apiGet, apiPost, apiDelete } from '$lib/utils/apiClient';
 
 	let loading = $state(true);
 	let loadingPagos = $state(true);
@@ -24,11 +25,7 @@
 	async function loadTarjetas() {
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/tarjetas', {
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiGet('/api/tarjetas', token);
 
 			if (!response.ok) {
 				throw new Error('Error al cargar tarjetas');
@@ -37,18 +34,16 @@
 			const data = await response.json();
 			tarjetas = data.tarjetas || [];
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
 	async function loadFormasPago() {
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/formas-pago', {
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiGet('/api/formas-pago', token);
 
 			if (!response.ok) {
 				throw new Error('Error al cargar formas de pago');
@@ -60,18 +55,16 @@
 				fp.tipo.toUpperCase() === 'EFECTIVO' || fp.tipo.toUpperCase() === 'TRANSFERENCIA'
 			);
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
 	async function loadPagos() {
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/pagos-tarjetas', {
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiGet('/api/pagos-tarjetas', token);
 
 			if (!response.ok) {
 				throw new Error('Error al cargar pagos');
@@ -79,7 +72,9 @@
 
 			pagos = await response.json();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		} finally {
 			loadingPagos = false;
 		}
@@ -97,14 +92,7 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/pagos-tarjetas', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
-				},
-				body: JSON.stringify(formData)
-			});
+			const response = await apiPost('/api/pagos-tarjetas', token, formData);
 
 			const data = await response.json();
 
@@ -132,7 +120,9 @@
 				success = '';
 			}, 3000);
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
@@ -143,12 +133,7 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch(`/api/pagos-tarjetas/${id}`, {
-				method: 'DELETE',
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
+			const response = await apiDelete(`/api/pagos-tarjetas/${id}`, token);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -165,7 +150,9 @@
 				success = '';
 			}, 3000);
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 

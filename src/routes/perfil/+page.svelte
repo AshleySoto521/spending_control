@@ -4,6 +4,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { apiGet, apiPut, apiPost } from '$lib/utils/apiClient';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -26,9 +27,7 @@
 	async function loadUserData() {
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/user', {
-				headers: { Authorization: `Bearer ${token}` }
-			});
+			const response = await apiGet('/api/user', token);
 
 			if (!response.ok) {
 				throw new Error('Error al cargar datos del usuario');
@@ -40,7 +39,9 @@
 			email = userData.email;
 			celular = userData.celular || '';
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		} finally {
 			loading = false;
 		}
@@ -52,14 +53,7 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/user', {
-				method: 'PUT',
-				headers: {
-					Authorization: `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ nombre, celular })
-			});
+			const response = await apiPut('/api/user', token, { nombre, celular });
 
 			const data = await response.json();
 
@@ -77,7 +71,9 @@
 				successMessage = '';
 			}, 3000);
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
@@ -99,13 +95,9 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch('/api/user/change-password', {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ currentPassword, newPassword })
+			const response = await apiPost('/api/user/change-password', token, {
+				currentPassword,
+				newPassword
 			});
 
 			const data = await response.json();
@@ -123,7 +115,9 @@
 				passwordSuccess = '';
 			}, 3000);
 		} catch (err: any) {
-			passwordError = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				passwordError = err.message;
+			}
 		} finally {
 			loadingPassword = false;
 		}

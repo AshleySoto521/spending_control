@@ -5,6 +5,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import ExportModal from '$lib/components/ExportModal.svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { apiGet, apiPost, apiPut, apiDelete } from '$lib/utils/apiClient';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -35,16 +36,10 @@
 			const token = $authStore.token;
 
 			const [egresosRes, formasPagoRes, tarjetasRes, resumenRes] = await Promise.all([
-				fetch('/api/egresos', {
-					headers: { 'Authorization': `Bearer ${token}` }
-				}),
+				apiGet('/api/egresos', token),
 				fetch('/api/formas-pago'),
-				fetch('/api/tarjetas', {
-					headers: { 'Authorization': `Bearer ${token}` }
-				}),
-				fetch('/api/egresos/resumen-tarjetas', {
-					headers: { 'Authorization': `Bearer ${token}` }
-				})
+				apiGet('/api/tarjetas', token),
+				apiGet('/api/egresos/resumen-tarjetas', token)
 			]);
 
 			if (!egresosRes.ok) throw new Error('Error al cargar egresos');
@@ -60,7 +55,9 @@
 			resumenTarjetas = resumenData.resumen_tarjetas || [];
 			resumenSinTarjeta = resumenData.resumen_sin_tarjeta;
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		} finally {
 			loading = false;
 		}
@@ -95,24 +92,19 @@
 		try {
 			const token = $authStore.token;
 			const url = editingId ? `/api/egresos/${editingId}` : '/api/egresos';
-			const method = editingId ? 'PUT' : 'POST';
+			const body = {
+				...formData,
+				monto: parseFloat(formData.monto),
+				id_forma_pago: parseInt(formData.id_forma_pago),
+				id_tarjeta: formData.id_tarjeta ? parseInt(formData.id_tarjeta) : null,
+				compra_meses: formData.compra_meses,
+				num_meses: formData.compra_meses && formData.num_meses ? parseInt(formData.num_meses) : null,
+				mes_inicio_pago: formData.compra_meses ? parseInt(formData.mes_inicio_pago) : null
+			};
 
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					...formData,
-					monto: parseFloat(formData.monto),
-					id_forma_pago: parseInt(formData.id_forma_pago),
-					id_tarjeta: formData.id_tarjeta ? parseInt(formData.id_tarjeta) : null,
-					compra_meses: formData.compra_meses,
-					num_meses: formData.compra_meses && formData.num_meses ? parseInt(formData.num_meses) : null,
-					mes_inicio_pago: formData.compra_meses ? parseInt(formData.mes_inicio_pago) : null
-				})
-			});
+			const response = editingId
+				? await apiPut(url, token, body)
+				: await apiPost(url, token, body);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -135,7 +127,9 @@
 			};
 			loadData();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
@@ -144,15 +138,14 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await fetch(`/api/egresos/${id}`, {
-				method: 'DELETE',
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
+			const response = await apiDelete(`/api/egresos/${id}`, token);
 
 			if (!response.ok) throw new Error('Error al eliminar');
 			loadData();
 		} catch (err: any) {
-			error = err.message;
+			if (!err.message.includes('Sesión expirada')) {
+				error = err.message;
+			}
 		}
 	}
 
