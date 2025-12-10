@@ -7,7 +7,7 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
 
-		// Obtener saldo actual
+		// 1. Obtener saldo actual (Ingresos - Egresos - Pagos ya realizados)
 		const totalIngresos = await query(
 			`SELECT COALESCE(SUM(i.monto), 0) as total
 			FROM ingresos i
@@ -39,7 +39,7 @@ export const GET: RequestHandler = async (event) => {
 		                    parseFloat(totalEgresos.rows[0].total) -
 		                    parseFloat(totalPagosTarjeta.rows[0].total);
 
-		// Obtener pagos pendientes de tarjetas con fecha límite
+		// 2. Obtener pagos pendientes de tarjetas (Deuda inmediata)
 		const pagosPendientes = await query(
 			`SELECT
 				v.id_tarjeta,
@@ -56,8 +56,8 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
-		// Obtener préstamos activos y sus pagos mensuales
-		const prestamosPendientes = await query(
+		// 3. Obtener préstamos activos
+		const prestamosPendientesQuery = await query(
 			`SELECT
 				p.id_prestamo,
 				p.institucion as nombre,
@@ -72,11 +72,50 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
+		// --- LOGICA AGREGADA PARA PROYECCIÓN ---
+
+		// A. Procesar Préstamos: Calcular fecha real del próximo pago
+		const hoy = new Date();
+		const prestamosProcesados = prestamosPendientesQuery.rows.map((prestamo: any) => {
+			let fechaPago = new Date(hoy.getFullYear(), hoy.getMonth(), prestamo.dia_pago);
+			
+			// Si el día de pago de este mes ya pasó (o es hoy), asumimos el pago para el siguiente mes
+			// OJO: Ajusta esta lógica según tu regla de negocio. Aquí asumo que si hoy es 15 y el pago es el 10, el próximo es el 10 del otro mes.
+			if (fechaPago < hoy) {
+				fechaPago = new Date(hoy.getFullYear(), hoy.getMonth() + 1, prestamo.dia_pago);
+			}
+
+			return {
+				...prestamo,
+				fecha_limite_pago: fechaPago, // Unificamos nombre de campo con tarjetas para el frontend
+				monto_pago: parseFloat(prestamo.monto_pago)
+			};
+		});
+
+		// B. Calcular Totales a Pagar
+		const totalTarjetasPendiente = pagosPendientes.rows.reduce(
+			(sum: number, item: any) => sum + parseFloat(item.monto_pago), 0
+		);
+
+		const totalPrestamosPendiente = prestamosProcesados.reduce(
+			(sum: number, item: any) => sum + item.monto_pago, 0
+		);
+
+		// C. Calcular Saldo Proyectado (Saldo Real - Deudas Próximas)
+		const saldoProyectado = saldoActual - totalTarjetasPendiente - totalPrestamosPendiente;
+
 		return json({
 			saldo_actual: saldoActual,
+			saldo_proyectado: saldoProyectado, // Dato clave nuevo
+			totales: {
+				tarjetas: totalTarjetasPendiente,
+				prestamos: totalPrestamosPendiente,
+				total_a_pagar: totalTarjetasPendiente + totalPrestamosPendiente
+			},
 			pagos_pendientes: pagosPendientes.rows,
-			prestamos_pendientes: prestamosPendientes.rows
+			prestamos_pendientes: prestamosProcesados // Enviamos los préstamos con la fecha calculada
 		});
+
 	} catch (error: any) {
 		if (error.status === 401) {
 			return error;

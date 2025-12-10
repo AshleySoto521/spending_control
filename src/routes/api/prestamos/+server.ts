@@ -1,22 +1,27 @@
+// src/routes/api/prestamos/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
 
-// GET - Obtener todos los préstamos del usuario
+// GET - Obtener todos los préstamos del usuario con sus saldos calculados
 export const GET: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
 
+		// La consulta incluye subqueries para calcular cuánto se ha pagado y el saldo real
+		// basándose en la tabla 'pagos_prestamos'
 		const prestamos = await query(
 			`SELECT
 				p.*,
 				(SELECT COALESCE(SUM(pp.monto), 0)
 				 FROM pagos_prestamos pp
 				 WHERE pp.id_prestamo = p.id_prestamo) as total_pagado,
+				
 				p.monto_original - (SELECT COALESCE(SUM(pp.monto), 0)
 				                    FROM pagos_prestamos pp
 				                    WHERE pp.id_prestamo = p.id_prestamo) as saldo_pendiente,
+				
 				FLOOR((CURRENT_DATE - p.fecha_inicio) / 30.0) as meses_transcurridos
 			FROM prestamos p
 			WHERE p.id_usuario = $1
@@ -26,9 +31,7 @@ export const GET: RequestHandler = async (event) => {
 
 		return json({ prestamos: prestamos.rows });
 	} catch (error: any) {
-		if (error.status === 401) {
-			return error;
-		}
+		if (error.status === 401) return error;
 		console.error('Error al obtener préstamos:', error);
 		return json({ error: 'Error al obtener préstamos' }, { status: 500 });
 	}
@@ -54,17 +57,11 @@ export const POST: RequestHandler = async (event) => {
 
 		// Validaciones
 		if (!tipo_prestamo || !institucion || !monto_original || !plazo_meses || !pago_mensual || !dia_pago || !fecha_inicio) {
-			return json(
-				{ error: 'Faltan campos requeridos' },
-				{ status: 400 }
-			);
+			return json({ error: 'Faltan campos requeridos' }, { status: 400 });
 		}
 
 		if (!['PERSONAL', 'AUTOMOTRIZ', 'HIPOTECARIO'].includes(tipo_prestamo)) {
-			return json(
-				{ error: 'Tipo de préstamo inválido' },
-				{ status: 400 }
-			);
+			return json({ error: 'Tipo de préstamo inválido' }, { status: 400 });
 		}
 
 		const result = await query(
@@ -88,23 +85,19 @@ export const POST: RequestHandler = async (event) => {
 			]
 		);
 
-		return json(
-			{
-				message: 'Préstamo creado exitosamente',
-				prestamo: result.rows[0]
-			},
-			{ status: 201 }
-		);
+		return json({
+			message: 'Préstamo creado exitosamente',
+			prestamo: result.rows[0]
+		}, { status: 201 });
+
 	} catch (error: any) {
-		if (error.status === 401) {
-			return error;
-		}
+		if (error.status === 401) return error;
 		console.error('Error al crear préstamo:', error);
 		return json({ error: 'Error al crear préstamo' }, { status: 500 });
 	}
 };
 
-// PUT - Actualizar un préstamo
+// PUT - Actualizar un préstamo existente
 export const PUT: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
@@ -128,7 +121,7 @@ export const PUT: RequestHandler = async (event) => {
 			return json({ error: 'ID de préstamo requerido' }, { status: 400 });
 		}
 
-		// Verificar que el préstamo pertenece al usuario
+		// Verificar propiedad
 		const checkOwnership = await query(
 			'SELECT id_prestamo FROM prestamos WHERE id_prestamo = $1 AND id_usuario = $2',
 			[id_prestamo, userId]
@@ -172,16 +165,15 @@ export const PUT: RequestHandler = async (event) => {
 			message: 'Préstamo actualizado exitosamente',
 			prestamo: result.rows[0]
 		});
+
 	} catch (error: any) {
-		if (error.status === 401) {
-			return error;
-		}
+		if (error.status === 401) return error;
 		console.error('Error al actualizar préstamo:', error);
 		return json({ error: 'Error al actualizar préstamo' }, { status: 500 });
 	}
 };
 
-// DELETE - Eliminar un préstamo
+// DELETE - Eliminar un préstamo y su historial
 export const DELETE: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
@@ -192,7 +184,7 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'ID de préstamo requerido' }, { status: 400 });
 		}
 
-		// Verificar que el préstamo pertenece al usuario
+		// Verificar propiedad
 		const checkOwnership = await query(
 			'SELECT id_prestamo FROM prestamos WHERE id_prestamo = $1 AND id_usuario = $2',
 			[id_prestamo, userId]
@@ -202,16 +194,22 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'Préstamo no encontrado' }, { status: 404 });
 		}
 
+		// 1. Eliminar historial de pagos de este préstamo primero (para evitar errores de Foreign Key)
+		await query(
+			'DELETE FROM pagos_prestamos WHERE id_prestamo = $1',
+			[id_prestamo]
+		);
+
+		// 2. Eliminar el préstamo
 		await query(
 			'DELETE FROM prestamos WHERE id_prestamo = $1 AND id_usuario = $2',
 			[id_prestamo, userId]
 		);
 
 		return json({ message: 'Préstamo eliminado exitosamente' });
+
 	} catch (error: any) {
-		if (error.status === 401) {
-			return error;
-		}
+		if (error.status === 401) return error;
 		console.error('Error al eliminar préstamo:', error);
 		return json({ error: 'Error al eliminar préstamo' }, { status: 500 });
 	}

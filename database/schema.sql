@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
 );
 
 -- Tabla de catálogo de formas de pago
-CREATE TABLE IF NOT EXISTS formas_pago (
     id_forma_pago SERIAL PRIMARY KEY,
     tipo VARCHAR(50) NOT NULL,
     descripcion TEXT
@@ -95,6 +94,18 @@ CREATE TABLE IF NOT EXISTS pagos_tarjetas (
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabla de pagos de préstamos
+CREATE TABLE IF NOT EXISTS pagos_prestamos (
+    id_pago SERIAL PRIMARY KEY,
+    id_usuario UUID NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    id_prestamo INTEGER NOT NULL REFERENCES prestamos(id_prestamo) ON DELETE CASCADE,
+    fecha_pago DATE NOT NULL,
+    monto DECIMAL(12, 2) NOT NULL CHECK (monto > 0),
+    id_forma_pago INTEGER NOT NULL REFERENCES formas_pago(id_forma_pago),
+    descripcion TEXT,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_usuarios_email ON usuarios(email);
 CREATE INDEX idx_tarjetas_usuario ON tarjetas(id_usuario);
@@ -105,6 +116,10 @@ CREATE INDEX idx_egresos_fecha ON egresos(fecha_egreso);
 CREATE INDEX idx_pagos_tarjetas_usuario ON pagos_tarjetas(id_usuario);
 CREATE INDEX idx_pagos_tarjetas_tarjeta ON pagos_tarjetas(id_tarjeta);
 CREATE INDEX idx_pagos_tarjetas_fecha ON pagos_tarjetas(fecha_pago);
+CREATE INDEX idx_prestamos_usuario ON prestamos(id_usuario);
+CREATE INDEX idx_prestamos_activo ON prestamos(activo);
+CREATE INDEX idx_pagos_prestamos_usuario ON pagos_prestamos(id_usuario);
+CREATE INDEX idx_pagos_prestamos_prestamo ON pagos_prestamos(id_prestamo);
 
 -- Insertar datos iniciales de formas de pago
 INSERT INTO formas_pago (tipo, descripcion) VALUES
