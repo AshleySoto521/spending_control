@@ -32,11 +32,11 @@
 			<div class="flex">
 				<div class="shrink-0 flex items-center">
 					<a href="/dashboard" class="font-bold text-gray-900">
-						<span class="hidden sm:inline text-2xl">Control Gastos</span>
-						<span class="sm:hidden text-xl">💰 Control $</span>
+						<span class="hidden sm:inline text-xl">Control Gastos</span>
+						<span class="sm:hidden text-lg">💰 Control $</span>
 					</a>
 				</div>
-				<div class="hidden md:ml-10 md:flex md:space-x-8">
+				<div class="hidden md:ml-6 md:flex md:space-x-4">
 					<a
 						href="/dashboard"
 						class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition"
@@ -78,6 +78,16 @@
 						Egresos
 					</a>
 					<a
+						href="/prestamos"
+						class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition"
+						class:border-gray-800={$page.url.pathname.startsWith('/prestamos')}
+						class:text-gray-900={$page.url.pathname.startsWith('/prestamos')}
+						class:border-transparent={!$page.url.pathname.startsWith('/prestamos')}
+						class:text-gray-500={!$page.url.pathname.startsWith('/prestamos')}
+					>
+						Préstamos
+					</a>
+					<a
 						href="/pagos-tarjetas"
 						class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition"
 						class:border-gray-800={$page.url.pathname === '/pagos-tarjetas'}
@@ -85,7 +95,7 @@
 						class:border-transparent={$page.url.pathname !== '/pagos-tarjetas'}
 						class:text-gray-500={$page.url.pathname !== '/pagos-tarjetas'}
 					>
-						Pagos Tarjetas
+						Pagos
 					</a>
 					<a
 						href="/proximos-pagos-tarjetas"
@@ -95,7 +105,17 @@
 						class:border-transparent={$page.url.pathname !== '/proximos-pagos-tarjetas'}
 						class:text-gray-500={$page.url.pathname !== '/proximos-pagos-tarjetas'}
 					>
-						Próximos Pagos
+						Próximos
+					</a>
+					<a
+						href="/proyeccion"
+						class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition"
+						class:border-gray-800={$page.url.pathname === '/proyeccion'}
+						class:text-gray-900={$page.url.pathname === '/proyeccion'}
+						class:border-transparent={$page.url.pathname !== '/proyeccion'}
+						class:text-gray-500={$page.url.pathname !== '/proyeccion'}
+					>
+						Proyección
 					</a>
 					{#if $authStore.user?.es_admin}
 						<a
@@ -106,7 +126,7 @@
 							class:border-transparent={!$page.url.pathname.startsWith('/admin')}
 							class:text-gray-500={!$page.url.pathname.startsWith('/admin')}
 						>
-							Administración
+							Admin
 						</a>
 					{/if}
 				</div>
@@ -207,6 +227,17 @@
 					💸 Egresos
 				</a>
 				<a
+					href="/prestamos"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
+					class:border-gray-800={$page.url.pathname.startsWith('/prestamos')}
+					class:bg-gray-50={$page.url.pathname.startsWith('/prestamos')}
+					class:text-gray-900={$page.url.pathname.startsWith('/prestamos')}
+					class:border-transparent={!$page.url.pathname.startsWith('/prestamos')}
+					class:text-gray-700={!$page.url.pathname.startsWith('/prestamos')}
+				>
+					🏦 Préstamos
+				</a>
+				<a
 					href="/pagos-tarjetas"
 					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
 					class:border-gray-800={$page.url.pathname === '/pagos-tarjetas'}
@@ -215,7 +246,7 @@
 					class:border-transparent={$page.url.pathname !== '/pagos-tarjetas'}
 					class:text-gray-700={$page.url.pathname !== '/pagos-tarjetas'}
 				>
-					💰 Pagos Tarjetas
+					💰 Pagos
 				</a>
 				<a
 					href="/proximos-pagos-tarjetas"
@@ -226,7 +257,18 @@
 					class:border-transparent={$page.url.pathname !== '/proximos-pagos-tarjetas'}
 					class:text-gray-700={$page.url.pathname !== '/proximos-pagos-tarjetas'}
 				>
-					📅 Próximos Pagos
+					📅 Próximos
+				</a>
+				<a
+					href="/proyeccion"
+					class="block pl-3 pr-4 py-3 border-l-4 text-base font-medium rounded-r-lg transition-colors active:bg-gray-100"
+					class:border-gray-800={$page.url.pathname === '/proyeccion'}
+					class:bg-gray-50={$page.url.pathname === '/proyeccion'}
+					class:text-gray-900={$page.url.pathname === '/proyeccion'}
+					class:border-transparent={$page.url.pathname !== '/proyeccion'}
+					class:text-gray-700={$page.url.pathname !== '/proyeccion'}
+				>
+					📈 Proyección
 				</a>
 				{#if $authStore.user?.es_admin}
 					<a
@@ -238,7 +280,7 @@
 						class:border-transparent={!$page.url.pathname.startsWith('/admin')}
 						class:text-gray-700={!$page.url.pathname.startsWith('/admin')}
 					>
-						⚙️ Administración
+						⚙️ Admin
 					</a>
 				{/if}
 			</div>

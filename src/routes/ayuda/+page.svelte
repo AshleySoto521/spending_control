@@ -97,6 +97,15 @@
 								Próximos Pagos
 							</button>
 							<button
+								onclick={() => scrollToSection('proyeccion')}
+								class="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100"
+								class:bg-gray-800={activeSection === 'proyeccion'}
+								class:text-white={activeSection === 'proyeccion'}
+								class:text-gray-700={activeSection !== 'proyeccion'}
+							>
+								Proyección Financiera
+							</button>
+							<button
 								onclick={() => scrollToSection('msi')}
 								class="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100"
 								class:bg-gray-800={activeSection === 'msi'}
@@ -615,6 +624,116 @@
 								<p class="text-green-800">
 									Activa notificaciones o crea un recordatorio en tu celular para revisar esta sección
 									cada semana. Así nunca olvidarás un pago y evitarás cargos por mora o intereses adicionales.
+								</p>
+							</div>
+						</div>
+					</section>
+
+					<!-- Proyección Financiera -->
+					<section id="proyeccion" class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 scroll-mt-8">
+						<h2 class="text-3xl font-bold text-gray-900 mb-6">
+							Proyección Financiera - Planifica tu Dinero
+						</h2>
+						<div class="space-y-6 text-gray-700">
+							<p class="text-lg">
+								La proyección financiera te ayuda a planear cuánto dinero te quedará después de pagar
+								tus tarjetas en cada quincena. Es como ver el futuro de tu bolsillo.
+							</p>
+
+							<div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+								<h3 class="font-semibold text-blue-900 mb-3">¿Para qué sirve?</h3>
+								<p class="text-sm text-blue-800 mb-2">
+									Imagina que hoy tienes $10,000 en el banco. Sabes que el día 14 debes pagar 3 tarjetas
+									que suman $4,500. Con la proyección puedes ver:
+								</p>
+								<ul class="list-disc list-inside space-y-1 text-sm text-blue-800 pl-4">
+									<li><strong>Primera quincena:</strong> Si pagas tus tarjetas, te quedarán $5,500</li>
+									<li><strong>Segunda quincena:</strong> Si tienes más pagos pendientes, puedes ver cuánto te quedará</li>
+								</ul>
+								<p class="text-sm text-blue-800 mt-3">
+									Esto te permite saber si te va a alcanzar el dinero o si necesitas ajustar tus gastos.
+								</p>
+							</div>
+
+							<div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+								<h3 class="font-semibold text-purple-900 mb-3">⚙️ Configurar tus Días de Pago</h3>
+								<p class="text-sm text-purple-800 mb-2">
+									Primero necesitas decirle a la aplicación qué días te pagan. Por ejemplo:
+								</p>
+								<ul class="list-disc list-inside space-y-1 text-sm text-purple-800 pl-4">
+									<li>Si te pagan la primera quincena el día 15, pon 15</li>
+									<li>Si te pagan la segunda quincena el día 30 o último día del mes, pon 30</li>
+								</ul>
+								<p class="text-sm text-purple-800 mt-3">
+									Haz clic en "Configurar Días de Pago", ingresa tus días y guarda. Esto se queda
+									guardado en tu navegador.
+								</p>
+							</div>
+
+							<div class="bg-yellow-50 p-4 rounded-lg">
+								<h3 class="font-semibold text-gray-900 mb-3">📊 Cómo Leer la Proyección</h3>
+								<div class="space-y-2 text-sm">
+									<p><strong>Saldo Actual:</strong> Tu dinero disponible ahora mismo.</p>
+									<p><strong>Primera Quincena:</strong> Lista de tarjetas que vencen del día 1 al día que configuraste (ej: día 15). Muestra cuánto vas a pagar y cuánto te quedará.</p>
+									<p><strong>Segunda Quincena:</strong> Lista de tarjetas que vencen después (ej: del 16 al 30). Igual muestra pagos y saldo proyectado.</p>
+									<p class="text-red-700 mt-2"><strong>⚠️ Alerta en Rojo:</strong> Si el saldo proyectado sale negativo, significa que no te va a alcanzar el dinero. Necesitas ajustar gastos o conseguir más ingresos.</p>
+								</div>
+							</div>
+
+							<div class="bg-cyan-50 border border-cyan-200 rounded-lg p-6">
+								<h3 class="font-semibold text-cyan-900 mb-3">💡 Ejemplo Práctico</h3>
+								<div class="space-y-2 text-sm text-cyan-800">
+									<p><strong>Situación:</strong></p>
+									<ul class="list-disc list-inside pl-4 space-y-1">
+										<li>Saldo actual: $12,000</li>
+										<li>Día de pago primera quincena: 15</li>
+										<li>Día de pago segunda quincena: 30</li>
+									</ul>
+									<p class="mt-2"><strong>Proyección Primera Quincena (1-15):</strong></p>
+									<ul class="list-disc list-inside pl-4 space-y-1">
+										<li>Tarjeta BBVA vence el 10: $2,000</li>
+										<li>Tarjeta Liverpool vence el 12: $1,500</li>
+										<li><strong>Total a pagar: $3,500</strong></li>
+										<li><strong class="text-green-700">Saldo proyectado: $8,500 ✓</strong></li>
+									</ul>
+									<p class="mt-2"><strong>Proyección Segunda Quincena (16-30):</strong></p>
+									<ul class="list-disc list-inside pl-4 space-y-1">
+										<li>Tarjeta Banamex vence el 25: $4,200</li>
+										<li><strong>Total a pagar: $4,200</strong></li>
+										<li><strong class="text-green-700">Saldo proyectado: $4,300 ✓</strong></li>
+									</ul>
+									<p class="mt-3 text-green-800">
+										En este ejemplo, te alcanza el dinero en ambas quincenas. Si algún saldo saliera en
+										negativo (rojo), sabrías que necesitas ajustar gastos o posponer pagos.
+									</p>
+								</div>
+							</div>
+
+							<div class="bg-indigo-50 p-4 rounded-lg">
+								<h3 class="font-semibold text-gray-900 mb-3">🎯 ¿Cuándo Usar la Proyección?</h3>
+								<ul class="list-disc list-inside space-y-2 text-sm pl-4">
+									<li><strong>Inicio de mes:</strong> Para planear cómo distribuir tu dinero</li>
+									<li><strong>Antes de una compra grande:</strong> Para ver si te quedará suficiente dinero</li>
+									<li><strong>Cuando te paguen:</strong> Para decidir cuánto puedes gastar vs cuánto reservar</li>
+									<li><strong>Si tienes poco dinero:</strong> Para priorizar qué tarjetas pagar primero</li>
+								</ul>
+							</div>
+
+							<div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+								<p class="font-semibold text-green-900 mb-2">💡 Consejo</p>
+								<p class="text-green-800">
+									Esta proyección es una simulación basada en tus datos actuales. Si registras nuevos
+									ingresos, gastos o pagos de tarjetas, los números cambiarán. Revísala frecuentemente
+									para mantener una visión realista de tu situación financiera.
+								</p>
+							</div>
+
+							<div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+								<p class="font-semibold text-red-900 mb-2">⚠️ Importante</p>
+								<p class="text-red-800">
+									La proyección NO incluye gastos futuros que aún no has registrado (como comida,
+									gasolina, servicios). Solo considera tus pagos de tarjetas pendientes. Planifica
+									dejando un margen extra para tus gastos diarios.
 								</p>
 							</div>
 						</div>

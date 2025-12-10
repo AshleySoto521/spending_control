@@ -132,11 +132,11 @@
 				<!-- Feature 4 -->
 				<div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
 					<div class="w-14 h-14 bg-gray-800 rounded-lg flex items-center justify-center mb-4">
-						<span class="text-2xl">🎯</span>
+						<span class="text-2xl">📊</span>
 					</div>
-					<h3 class="text-xl font-bold text-gray-900 mb-3">Metas Financieras</h3>
+					<h3 class="text-xl font-bold text-gray-900 mb-3">Proyección Financiera</h3>
 					<p class="text-gray-600">
-						Define objetivos de ahorro y realiza un seguimiento de tu progreso hacia tus metas financieras.
+						Proyecta tu saldo futuro simulando los pagos de tarjetas por quincena. Anticipa problemas y planifica mejor.
 					</p>
 				</div>
 
