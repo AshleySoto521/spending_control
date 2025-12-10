@@ -1,11 +1,39 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/stores/auth';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
 	let loading = $state(false);
+	let savedEmail = $state('');
+	let showEmailField = $state(false);
+
+	const SAVED_EMAIL_KEY = 'savedLoginEmail';
+
+	onMount(() => {
+		// Cargar el correo guardado si existe
+		const stored = localStorage.getItem(SAVED_EMAIL_KEY);
+		if (stored) {
+			savedEmail = stored;
+			email = stored;
+			showEmailField = false;
+		} else {
+			showEmailField = true;
+		}
+	});
+
+	function handleChangeEmail() {
+		showEmailField = true;
+		email = '';
+		savedEmail = '';
+		// Limpiar el localStorage
+		if (browser) {
+			localStorage.removeItem(SAVED_EMAIL_KEY);
+		}
+	}
 
 	async function handleLogin() {
 		error = '';
@@ -23,6 +51,11 @@
 			if (!response.ok) {
 				error = data.error || 'Error al iniciar sesión';
 				return;
+			}
+
+			// Guardar el correo en localStorage para futuros logins
+			if (browser) {
+				localStorage.setItem(SAVED_EMAIL_KEY, email);
 			}
 
 			authStore.login(data.user, data.token);
@@ -53,14 +86,30 @@
 				<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
 					Email
 				</label>
-				<input
-					id="email"
-					type="email"
-					bind:value={email}
-					required
-					class="input-minimal"
-					placeholder="tu@email.com"
-				/>
+				{#if !showEmailField && savedEmail}
+					<!-- Mostrar el correo guardado -->
+					<div class="input-minimal bg-gray-50 flex items-center justify-between">
+						<span class="text-gray-900">{savedEmail}</span>
+						<button
+							type="button"
+							onclick={handleChangeEmail}
+							class="text-sm text-gray-600 hover:text-gray-900 font-medium"
+						>
+							Cambiar
+						</button>
+					</div>
+				{:else}
+					<!-- Mostrar campo de entrada -->
+					<input
+						id="email"
+						type="email"
+						bind:value={email}
+						required
+						class="input-minimal"
+						placeholder="tu@email.com"
+						autofocus
+					/>
+				{/if}
 			</div>
 
 			<div>
@@ -74,6 +123,7 @@
 					required
 					class="input-minimal"
 					placeholder="••••••••"
+					autofocus={!showEmailField && !!savedEmail}
 				/>
 			</div>
 

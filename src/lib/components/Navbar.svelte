@@ -9,7 +9,13 @@
 		try {
 			await fetch('/api/auth/logout', { method: 'POST' });
 			authStore.logout();
-			goto('/login');
+
+			// Detectar si la app está instalada como PWA
+			const isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
+			                    (window.navigator as any).standalone === true;
+
+			// Si está instalada, ir al login; si es navegador, ir a la página de bienvenida
+			goto(isInstalled ? '/login' : '/');
 		} catch (error) {
 			console.error('Error al cerrar sesión:', error);
 		}

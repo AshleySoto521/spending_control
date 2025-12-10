@@ -15,8 +15,13 @@
 		sessionStore.hideSessionExpired();
 		// Limpiar el store de autenticación
 		authStore.logout();
-		// Redirigir al login
-		goto('/login');
+
+		// Detectar si la app está instalada como PWA
+		const isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
+		                    (window.navigator as any).standalone === true;
+
+		// Si está instalada, ir al login; si es navegador, ir a la página de bienvenida
+		goto(isInstalled ? '/login' : '/');
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -37,6 +42,7 @@
 <div
 	class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"
 	onclick={handleGoToLogin}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleGoToLogin(); }}
 	role="button"
 	tabindex="-1"
 >
@@ -44,8 +50,10 @@
 	<div
 		class="bg-white rounded-2xl shadow-2xl max-w-md w-full"
 		onclick={(e) => e.stopPropagation()}
+		onkeydown={(e) => e.stopPropagation()}
 		role="dialog"
 		aria-modal="true"
+		tabindex="0"
 	>
 		<!-- Icon Header -->
 		<div class="bg-gray-800 text-white p-6 rounded-t-2xl text-center">
