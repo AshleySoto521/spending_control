@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 );
 
 -- Tabla de catálogo de formas de pago
+CREATE TABLE IF NOT EXISTS formas_pago (
     id_forma_pago SERIAL PRIMARY KEY,
     tipo VARCHAR(50) NOT NULL,
     descripcion TEXT
@@ -92,6 +93,28 @@ CREATE TABLE IF NOT EXISTS pagos_tarjetas (
     id_forma_pago INTEGER NOT NULL REFERENCES formas_pago(id_forma_pago),
     descripcion TEXT,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de préstamos
+CREATE TABLE IF NOT EXISTS prestamos (
+    id_prestamo SERIAL PRIMARY KEY,
+    id_usuario UUID NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    tipo_prestamo VARCHAR(20) NOT NULL,  -- 'PERSONAL', 'AUTOMOTRIZ', 'HIPOTECARIO'
+    institucion VARCHAR(200) NOT NULL,    -- Banco o institución que otorga el préstamo
+    monto_original DECIMAL(12, 2) NOT NULL,  -- Monto total del préstamo
+    tasa_interes DECIMAL(5, 2),           -- Tasa de interés anual (opcional)
+    plazo_meses INTEGER NOT NULL,         -- Plazo total en meses
+    pago_mensual DECIMAL(12, 2) NOT NULL, -- Monto del pago mensual
+    dia_pago INTEGER NOT NULL,            -- Día del mes para pagar (1-31)
+    fecha_inicio DATE NOT NULL,           -- Fecha de inicio del préstamo
+    descripcion TEXT,                     -- Propósito o detalles del préstamo
+    activo BOOLEAN DEFAULT TRUE,          -- Si el préstamo está activo o ya fue pagado
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (tipo_prestamo IN ('PERSONAL', 'AUTOMOTRIZ', 'HIPOTECARIO')),
+    CHECK (dia_pago >= 1 AND dia_pago <= 31),
+    CHECK (monto_original > 0),
+    CHECK (pago_mensual > 0),
+    CHECK (plazo_meses > 0)
 );
 
 -- Tabla de pagos de préstamos
@@ -180,14 +203,12 @@ WITH fecha_calculo AS (
         -- Calcular el último corte que ya pasó
         CASE
             WHEN EXTRACT(DAY FROM CURRENT_DATE) >= t.dia_corte THEN
-                -- Si ya pasó el día de corte este mes, el último corte es de este mes
                 make_date(
                     EXTRACT(YEAR FROM CURRENT_DATE)::int,
                     EXTRACT(MONTH FROM CURRENT_DATE)::int,
                     t.dia_corte
                 )
             ELSE
-                -- Si no ha llegado el día de corte, el último corte fue el mes pasado
                 make_date(
                     EXTRACT(YEAR FROM (CURRENT_DATE - INTERVAL '1 month'))::int,
                     EXTRACT(MONTH FROM (CURRENT_DATE - INTERVAL '1 month'))::int,
@@ -197,10 +218,8 @@ WITH fecha_calculo AS (
         -- Calcular el año y mes del corte anterior
         CASE
             WHEN EXTRACT(DAY FROM CURRENT_DATE) >= t.dia_corte THEN
-                -- El último corte es de este mes, así que el anterior es del mes pasado
                 EXTRACT(YEAR FROM (CURRENT_DATE - INTERVAL '1 month'))::int
             ELSE
-                -- El último corte es del mes pasado, así que el anterior es de hace 2 meses
                 EXTRACT(YEAR FROM (CURRENT_DATE - INTERVAL '2 month'))::int
         END as year_corte_anterior,
         CASE
@@ -212,10 +231,8 @@ WITH fecha_calculo AS (
         -- Calcular el año y mes del próximo corte
         CASE
             WHEN EXTRACT(DAY FROM CURRENT_DATE) >= t.dia_corte THEN
-                -- El último corte es de este mes, así que el próximo es del mes siguiente
                 EXTRACT(YEAR FROM (CURRENT_DATE + INTERVAL '1 month'))::int
             ELSE
-                -- El último corte es del mes pasado, así que el próximo es de este mes
                 EXTRACT(YEAR FROM CURRENT_DATE)::int
         END as year_proximo_corte,
         CASE
@@ -226,6 +243,16 @@ WITH fecha_calculo AS (
         END as month_proximo_corte
     FROM tarjetas t
     WHERE t.activa = TRUE
+),
+pagos_periodo AS (
+    -- Calcular el total de pagos realizados después del último corte
+    SELECT
+        pt.id_tarjeta,
+        COALESCE(SUM(pt.monto), 0) as total_pagos
+    FROM pagos_tarjetas pt
+    INNER JOIN fecha_calculo fc ON pt.id_tarjeta = fc.id_tarjeta
+    WHERE pt.fecha_pago > fc.ultimo_corte
+    GROUP BY pt.id_tarjeta
 )
 SELECT
     fc.id_tarjeta,
@@ -237,11 +264,11 @@ SELECT
     fc.saldo_usado as saldo_total,
     -- Último corte que pasó
     fc.ultimo_corte as fecha_ultimo_corte,
-    -- Corte anterior (construido explícitamente con año y mes correcto)
+    -- Corte anterior
     make_date(fc.year_corte_anterior, fc.month_corte_anterior, fc.dia_corte) as fecha_corte_anterior,
-    -- Próximo corte (construido explícitamente con año y mes correcto)
+    -- Próximo corte
     make_date(fc.year_proximo_corte, fc.month_proximo_corte, fc.dia_corte) as fecha_proximo_corte,
-    -- Egresos normales del periodo vencido (entre corte anterior y último corte)
+    -- Egresos normales del periodo vencido
     COALESCE(SUM(
         CASE
             WHEN (e.compra_meses = FALSE OR e.compra_meses IS NULL)
@@ -252,14 +279,28 @@ SELECT
         END
     ), 0) as egresos_periodo,
     -- Suma de cuotas mensuales de MSI pendientes
+    -- Solo suma las cuotas donde la cuota del periodo vencido AÚN NO se ha marcado como pagada
     COALESCE(SUM(
         CASE
-            WHEN e.compra_meses = TRUE AND e.meses_pagados < e.num_meses
+            WHEN e.compra_meses = TRUE
+            AND e.meses_pagados < e.num_meses
+            -- Calcular cuántas cuotas deberían estar pagadas hasta el último corte
+            AND e.meses_pagados < GREATEST(0,
+                -- Meses desde la fecha de compra hasta el último corte
+                (EXTRACT(YEAR FROM fc.ultimo_corte) - EXTRACT(YEAR FROM e.fecha_egreso))::INTEGER * 12 +
+                (EXTRACT(MONTH FROM fc.ultimo_corte) - EXTRACT(MONTH FROM e.fecha_egreso))::INTEGER +
+                -- Ajuste si el día de corte ya pasó en el mes de la compra
+                CASE
+                    WHEN EXTRACT(DAY FROM e.fecha_egreso) <= fc.dia_corte THEN 1
+                    ELSE 0
+                END -
+                COALESCE(e.mes_inicio_pago, 0)
+            )
             THEN e.monto_mensual
             ELSE 0
         END
     ), 0) as cuotas_msi_mensuales,
-    -- Pago del periodo vencido = egresos del periodo + cuotas MSI mensuales
+    -- Total del periodo (antes de restar pagos)
     COALESCE(SUM(
         CASE
             WHEN (e.compra_meses = FALSE OR e.compra_meses IS NULL)
@@ -270,16 +311,68 @@ SELECT
         END
     ), 0) + COALESCE(SUM(
         CASE
-            WHEN e.compra_meses = TRUE AND e.meses_pagados < e.num_meses
+            WHEN e.compra_meses = TRUE
+            AND e.meses_pagados < e.num_meses
+            -- Calcular cuántas cuotas deberían estar pagadas hasta el último corte
+            AND e.meses_pagados < GREATEST(0,
+                -- Meses desde la fecha de compra hasta el último corte
+                (EXTRACT(YEAR FROM fc.ultimo_corte) - EXTRACT(YEAR FROM e.fecha_egreso))::INTEGER * 12 +
+                (EXTRACT(MONTH FROM fc.ultimo_corte) - EXTRACT(MONTH FROM e.fecha_egreso))::INTEGER +
+                -- Ajuste si el día de corte ya pasó en el mes de la compra
+                CASE
+                    WHEN EXTRACT(DAY FROM e.fecha_egreso) <= fc.dia_corte THEN 1
+                    ELSE 0
+                END -
+                COALESCE(e.mes_inicio_pago, 0)
+            )
             THEN e.monto_mensual
             ELSE 0
         END
-    ), 0) as pago_periodo,
+    ), 0) as total_periodo,
+    -- Pagos realizados después del último corte
+    COALESCE(pp.total_pagos, 0) as pagos_realizados,
+    -- Pago pendiente del periodo = total del periodo - pagos realizados (nunca negativo)
+    GREATEST(
+        COALESCE(SUM(
+            CASE
+                WHEN (e.compra_meses = FALSE OR e.compra_meses IS NULL)
+                AND e.fecha_egreso > make_date(fc.year_corte_anterior, fc.month_corte_anterior, fc.dia_corte)
+                AND e.fecha_egreso <= fc.ultimo_corte
+                THEN e.monto
+                ELSE 0
+            END
+        ), 0) + COALESCE(SUM(
+            CASE
+                WHEN e.compra_meses = TRUE
+                AND e.meses_pagados < e.num_meses
+                -- Calcular cuántas cuotas deberían estar pagadas hasta el último corte
+                AND e.meses_pagados < GREATEST(0,
+                    -- Meses desde la fecha de compra hasta el último corte
+                    (EXTRACT(YEAR FROM fc.ultimo_corte) - EXTRACT(YEAR FROM e.fecha_egreso))::INTEGER * 12 +
+                    (EXTRACT(MONTH FROM fc.ultimo_corte) - EXTRACT(MONTH FROM e.fecha_egreso))::INTEGER +
+                    -- Ajuste si el día de corte ya pasó en el mes de la compra
+                    CASE
+                        WHEN EXTRACT(DAY FROM e.fecha_egreso) <= fc.dia_corte THEN 1
+                        ELSE 0
+                    END -
+                    COALESCE(e.mes_inicio_pago, 0)
+                )
+                THEN e.monto_mensual
+                ELSE 0
+            END
+        ), 0) - COALESCE(pp.total_pagos, 0),
+        0
+    ) as pago_periodo,
     -- Número de compras MSI activas
     COUNT(CASE WHEN e.compra_meses = TRUE AND e.meses_pagados < e.num_meses THEN 1 END) as num_compras_msi
 FROM fecha_calculo fc
 LEFT JOIN egresos e ON fc.id_tarjeta = e.id_tarjeta
-GROUP BY fc.id_tarjeta, fc.nom_tarjeta, fc.banco, fc.dia_corte, fc.dias_gracia, fc.saldo_usado, fc.id_usuario, fc.ultimo_corte, fc.year_corte_anterior, fc.month_corte_anterior, fc.year_proximo_corte, fc.month_proximo_corte;
+LEFT JOIN pagos_periodo pp ON fc.id_tarjeta = pp.id_tarjeta
+GROUP BY
+    fc.id_tarjeta, fc.nom_tarjeta, fc.banco, fc.dia_corte, fc.dias_gracia,
+    fc.saldo_usado, fc.id_usuario, fc.ultimo_corte, fc.year_corte_anterior,
+    fc.month_corte_anterior, fc.year_proximo_corte, fc.month_proximo_corte,
+    pp.total_pagos;
 
 -- Vista para calcular cuotas MSI pendientes y próximas
 CREATE OR REPLACE VIEW v_cuotas_msi AS

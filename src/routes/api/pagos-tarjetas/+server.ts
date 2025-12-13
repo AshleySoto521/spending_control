@@ -44,7 +44,7 @@ export const POST: RequestHandler = async (event) => {
 		const userId = await requireAuth(event);
 		const data = await event.request.json();
 
-		const { id_tarjeta, fecha_pago, monto, id_forma_pago, descripcion } = data;
+		const { id_tarjeta, fecha_pago, monto, id_forma_pago, descripcion, cuotas_msi_pagadas } = data;
 
 		// Validaciones
 		if (!id_tarjeta || !fecha_pago || !monto || !id_forma_pago) {
@@ -79,20 +79,67 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Solo se permiten pagos en efectivo o transferencia' }, { status: 400 });
 		}
 
-		// Registrar el pago (el trigger se encargará de actualizar el saldo de la tarjeta)
-		const result = await query(
-			`INSERT INTO pagos_tarjetas (id_usuario, id_tarjeta, fecha_pago, monto, id_forma_pago, descripcion)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			RETURNING *`,
-			[userId, id_tarjeta, fecha_pago, monto, id_forma_pago, descripcion || null]
-		);
+		// Iniciar transacción para asegurar consistencia
+		await query('BEGIN');
 
-		return json(result.rows[0], { status: 201 });
+		try {
+			// Registrar el pago (el trigger se encargará de actualizar el saldo de la tarjeta)
+			const result = await query(
+				`INSERT INTO pagos_tarjetas (id_usuario, id_tarjeta, fecha_pago, monto, id_forma_pago, descripcion)
+				VALUES ($1, $2, $3, $4, $5, $6)
+				RETURNING *`,
+				[userId, id_tarjeta, fecha_pago, monto, id_forma_pago, descripcion || null]
+			);
+
+			// Si se seleccionaron cuotas MSI, incrementar meses_pagados
+			if (cuotas_msi_pagadas && Array.isArray(cuotas_msi_pagadas) && cuotas_msi_pagadas.length > 0) {
+				for (const idEgreso of cuotas_msi_pagadas) {
+					// Verificar que el egreso pertenece al usuario y a la tarjeta
+					const egresoCheck = await query(
+						`SELECT id_egreso, meses_pagados, num_meses
+						FROM egresos
+						WHERE id_egreso = $1 AND id_usuario = $2 AND id_tarjeta = $3 AND compra_meses = TRUE`,
+						[idEgreso, userId, id_tarjeta]
+					);
+
+					if (egresoCheck.rows.length === 0) {
+						throw new Error(`Cuota MSI con ID ${idEgreso} no encontrada o no válida`);
+					}
+
+					const egreso = egresoCheck.rows[0];
+
+					// Verificar que no esté completamente pagado
+					if (egreso.meses_pagados >= egreso.num_meses) {
+						throw new Error(`La cuota MSI con ID ${idEgreso} ya está completamente pagada`);
+					}
+
+					// Incrementar meses_pagados en 1
+					await query(
+						`UPDATE egresos
+						SET meses_pagados = meses_pagados + 1
+						WHERE id_egreso = $1`,
+						[idEgreso]
+					);
+				}
+			}
+
+			// Confirmar transacción
+			await query('COMMIT');
+
+			return json({
+				...result.rows[0],
+				cuotas_msi_actualizadas: cuotas_msi_pagadas?.length || 0
+			}, { status: 201 });
+		} catch (innerError: any) {
+			// Revertir transacción en caso de error
+			await query('ROLLBACK');
+			throw innerError;
+		}
 	} catch (error: any) {
 		if (error.status === 401) {
 			return error;
 		}
 		console.error('Error al registrar pago de tarjeta:', error);
-		return json({ error: 'Error al registrar pago de tarjeta' }, { status: 500 });
+		return json({ error: error.message || 'Error al registrar pago de tarjeta' }, { status: 500 });
 	}
 };

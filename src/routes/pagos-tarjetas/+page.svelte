@@ -8,11 +8,14 @@
 
 	let loading = $state(true);
 	let loadingPagos = $state(true);
+	let loadingCuotasMSI = $state(false);
 	let error = $state('');
 	let success = $state('');
 	let tarjetas: any[] = $state([]);
 	let formasPago: any[] = $state([]);
 	let pagos: any[] = $state([]);
+	let cuotasMSI: any[] = $state([]);
+	let cuotasMSISeleccionadas: number[] = $state([]);
 
 	let formData = $state({
 		id_tarjeta: '',
@@ -80,6 +83,53 @@
 		}
 	}
 
+	async function loadCuotasMSI(idTarjeta: string) {
+		if (!idTarjeta) {
+			cuotasMSI = [];
+			cuotasMSISeleccionadas = [];
+			return;
+		}
+
+		try {
+			loadingCuotasMSI = true;
+			const token = $authStore.token;
+			const response = await apiGet(`/api/tarjetas/${idTarjeta}/cuotas-msi`, token);
+
+			if (!response.ok) {
+				throw new Error('Error al cargar cuotas MSI');
+			}
+
+			const data = await response.json();
+			cuotasMSI = data.cuotas_msi || [];
+			cuotasMSISeleccionadas = [];
+		} catch (err: any) {
+			if (!err.message.includes('Sesión expirada')) {
+				console.error('Error al cargar cuotas MSI:', err);
+			}
+		} finally {
+			loadingCuotasMSI = false;
+		}
+	}
+
+	function toggleCuotaMSI(idEgreso: number) {
+		const index = cuotasMSISeleccionadas.indexOf(idEgreso);
+		if (index > -1) {
+			cuotasMSISeleccionadas = cuotasMSISeleccionadas.filter(id => id !== idEgreso);
+		} else {
+			cuotasMSISeleccionadas = [...cuotasMSISeleccionadas, idEgreso];
+		}
+	}
+
+	// Observar cambios en id_tarjeta para cargar cuotas MSI
+	$effect(() => {
+		if (formData.id_tarjeta) {
+			loadCuotasMSI(formData.id_tarjeta);
+		} else {
+			cuotasMSI = [];
+			cuotasMSISeleccionadas = [];
+		}
+	});
+
 	onMount(async () => {
 		await Promise.all([loadTarjetas(), loadFormasPago(), loadPagos()]);
 		loading = false;
@@ -92,7 +142,12 @@
 
 		try {
 			const token = $authStore.token;
-			const response = await apiPost('/api/pagos-tarjetas', token, formData);
+			const payload = {
+				...formData,
+				cuotas_msi_pagadas: cuotasMSISeleccionadas.length > 0 ? cuotasMSISeleccionadas : undefined
+			};
+
+			const response = await apiPost('/api/pagos-tarjetas', token, payload);
 
 			const data = await response.json();
 
@@ -100,7 +155,11 @@
 				throw new Error(data.error || 'Error al registrar pago');
 			}
 
-			success = 'Pago registrado correctamente';
+			let mensaje = 'Pago registrado correctamente';
+			if (data.cuotas_msi_actualizadas > 0) {
+				mensaje += ` (${data.cuotas_msi_actualizadas} cuota${data.cuotas_msi_actualizadas > 1 ? 's' : ''} MSI actualizada${data.cuotas_msi_actualizadas > 1 ? 's' : ''})`;
+			}
+			success = mensaje;
 
 			// Resetear formulario
 			formData = {
@@ -110,6 +169,8 @@
 				id_forma_pago: '',
 				descripcion: ''
 			};
+			cuotasMSI = [];
+			cuotasMSISeleccionadas = [];
 
 			// Recargar lista de pagos y tarjetas (para actualizar saldos)
 			await loadPagos();
@@ -283,6 +344,85 @@
 								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
 							></textarea>
 						</div>
+
+						<!-- Sección de Cuotas MSI -->
+						{#if formData.id_tarjeta}
+							<div class="border-t pt-4">
+								<div class="flex items-center justify-between mb-3">
+									<h3 class="text-sm font-semibold text-gray-900">¿Este pago incluye cuotas a Meses Sin Intereses?</h3>
+									{#if loadingCuotasMSI}
+										<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-800"></div>
+									{/if}
+								</div>
+
+								{#if cuotasMSI.length > 0}
+									<p class="text-xs text-gray-600 mb-3">Selecciona las compras MSI que estás pagando este mes:</p>
+									<div class="space-y-2 max-h-60 overflow-y-auto">
+										{#each cuotasMSI as cuota}
+											<label class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+												class:bg-blue-50={cuotasMSISeleccionadas.includes(cuota.id_egreso)}
+												class:border-blue-300={cuotasMSISeleccionadas.includes(cuota.id_egreso)}
+												class:border-gray-200={!cuotasMSISeleccionadas.includes(cuota.id_egreso)}
+											>
+												<input
+													type="checkbox"
+													checked={cuotasMSISeleccionadas.includes(cuota.id_egreso)}
+													onchange={() => toggleCuotaMSI(cuota.id_egreso)}
+													class="mt-1 h-4 w-4 text-gray-800 focus:ring-gray-800 border-gray-300 rounded"
+												/>
+												<div class="ml-3 flex-1">
+													<div class="flex justify-between items-start">
+														<div class="flex-1">
+															<p class="text-sm font-medium text-gray-900">{cuota.concepto}</p>
+															{#if cuota.establecimiento}
+																<p class="text-xs text-gray-500">{cuota.establecimiento}</p>
+															{/if}
+															<div class="flex gap-3 mt-1">
+																<span class="text-xs text-gray-600">
+																	Cuota mensual: {formatCurrency(parseFloat(cuota.monto_mensual))}
+																</span>
+																<span class="text-xs text-gray-600">
+																	Progreso: {cuota.meses_pagados}/{cuota.num_meses}
+																</span>
+																<span class="text-xs text-gray-600">
+																	Pendiente: {formatCurrency(parseFloat(cuota.monto_pendiente))}
+																</span>
+															</div>
+														</div>
+														<span
+															class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ml-2"
+															class:bg-red-100={cuota.estado === 'atrasado'}
+															class:text-red-800={cuota.estado === 'atrasado'}
+															class:bg-green-100={cuota.estado === 'al_corriente'}
+															class:text-green-800={cuota.estado === 'al_corriente'}
+														>
+															{cuota.estado === 'atrasado' ? 'Atrasado' : 'Al corriente'}
+														</span>
+													</div>
+												</div>
+											</label>
+										{/each}
+									</div>
+
+									{#if cuotasMSISeleccionadas.length > 0}
+										<div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+											<p class="text-sm font-medium text-blue-900">
+												{cuotasMSISeleccionadas.length} cuota{cuotasMSISeleccionadas.length > 1 ? 's' : ''} seleccionada{cuotasMSISeleccionadas.length > 1 ? 's' : ''}
+											</p>
+											<p class="text-xs text-blue-700 mt-1">
+												Total MSI incluido: {formatCurrency(
+													cuotasMSI
+														.filter(c => cuotasMSISeleccionadas.includes(c.id_egreso))
+														.reduce((sum, c) => sum + parseFloat(c.monto_mensual), 0)
+												)}
+											</p>
+										</div>
+									{/if}
+								{:else if !loadingCuotasMSI}
+									<p class="text-sm text-gray-500 italic">No hay compras MSI pendientes para esta tarjeta</p>
+								{/if}
+							</div>
+						{/if}
 
 						<div class="flex justify-end">
 							<button
