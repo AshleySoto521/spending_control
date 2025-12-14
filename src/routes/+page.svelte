@@ -386,6 +386,10 @@
 						<a href="/privacidad" class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline">
 							Aviso de Privacidad
 						</a>
+						<span class="text-gray-400">|</span>
+						<a href="/politica-cookies" class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline">
+							Política de Cookies
+						</a>
 					</div>
 					<div class="text-gray-500 text-sm">
 						<p class="mb-2">¿Necesitas ayuda?</p>

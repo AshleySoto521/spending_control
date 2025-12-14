@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
 	import SessionExpiredModal from '$lib/components/SessionExpiredModal.svelte';
+	import CookieBanner from '$lib/components/CookieBanner.svelte';
 	import { registerServiceWorker } from '$lib/pwa';
 	import { sessionStore } from '$lib/stores/session';
 	import { onMount } from 'svelte';
@@ -26,3 +27,6 @@
 {#if $sessionStore.showExpiredModal && $sessionStore.reason}
 	<SessionExpiredModal reason={$sessionStore.reason} />
 {/if}
+
+<!-- Banner de cookies (global) -->
+<CookieBanner />

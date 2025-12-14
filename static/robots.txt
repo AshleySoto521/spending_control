@@ -6,6 +6,7 @@ User-agent: *
 Allow: /
 Allow: /terminos
 Allow: /privacidad
+Allow: /politica-cookies
 
 # Bloquear rutas de autenticación y privadas
 Disallow: /dashboard
