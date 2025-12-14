@@ -27,21 +27,12 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
-		// Pagos de tarjeta (debitan del saldo actual cuando se pagan en efectivo/transferencia)
-		const totalPagosTarjeta = await query(
-			`SELECT COALESCE(SUM(pt.monto), 0) as total
-			FROM pagos_tarjetas pt
-			JOIN formas_pago fp ON pt.id_forma_pago = fp.id_forma_pago
-			WHERE pt.id_usuario = $1
-			AND UPPER(fp.tipo) IN ('EFECTIVO', 'TRANSFERENCIA')`,
-			[userId]
-		);
-
+		// Los pagos de tarjeta ahora se registran automáticamente como egresos
+		// por lo que ya están incluidos en totalEgresos y no necesitamos restarlos aparte
 		const resumenFinanciero = {
 			total_ingresos: totalIngresos.rows[0].total,
 			total_egresos: totalEgresos.rows[0].total,
-			total_pagos_tarjeta: totalPagosTarjeta.rows[0].total,
-			saldo_actual: parseFloat(totalIngresos.rows[0].total) - parseFloat(totalEgresos.rows[0].total) - parseFloat(totalPagosTarjeta.rows[0].total)
+			saldo_actual: parseFloat(totalIngresos.rows[0].total) - parseFloat(totalEgresos.rows[0].total)
 		};
 
 		// Deuda total de tarjetas
@@ -112,7 +103,9 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
-		// Últimos movimientos (incluye pagos a tarjetas)
+		// Últimos movimientos
+		// Los pagos de tarjeta ahora se registran automáticamente como egresos
+		// por lo que ya no necesitamos traerlos por separado
 		const ultimosMovimientos = await query(
 			`(
 				SELECT
@@ -134,19 +127,6 @@ export const GET: RequestHandler = async (event) => {
 					descripcion as detalle
 				FROM ingresos
 				WHERE id_usuario = $1
-			)
-			UNION ALL
-			(
-				SELECT
-					'pago_tarjeta' as tipo,
-					fecha_pago as fecha,
-					CONCAT('Pago a ', t.nom_tarjeta) as descripcion,
-					monto,
-					CONCAT('Forma de pago: ', fp.tipo) as detalle
-				FROM pagos_tarjetas pt
-				JOIN tarjetas t ON pt.id_tarjeta = t.id_tarjeta
-				JOIN formas_pago fp ON pt.id_forma_pago = fp.id_forma_pago
-				WHERE pt.id_usuario = $1
 			)
 			ORDER BY fecha DESC
 			LIMIT 10`,

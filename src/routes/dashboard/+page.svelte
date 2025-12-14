@@ -387,10 +387,8 @@
 													class:text-gray-800={movimiento.tipo === 'ingreso'}
 													class:bg-gray-800={movimiento.tipo === 'egreso'}
 													class:text-white={movimiento.tipo === 'egreso'}
-													class:bg-blue-100={movimiento.tipo === 'pago_tarjeta'}
-													class:text-blue-800={movimiento.tipo === 'pago_tarjeta'}
 												>
-													{movimiento.tipo === 'pago_tarjeta' ? 'pago tarjeta' : movimiento.tipo}
+													{movimiento.tipo}
 												</span>
 											</td>
 											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
