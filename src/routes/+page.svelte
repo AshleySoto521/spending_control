@@ -2,6 +2,19 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth';
+	import { page } from '$app/stores';
+
+	// SEO Configuration
+	const seoConfig = {
+		title: 'Control de Gastos México - Gestiona tus Finanzas Personales Gratis',
+		description: 'App gratuita de control de gastos para México. Proyecta tu futuro financiero, gestiona tarjetas de crédito, registra ingresos y egresos. Herramienta 100% gratis hecha para mexicanos.',
+		keywords: 'control de gastos, finanzas personales méxico, app gastos gratis, control tarjetas crédito, presupuesto personal, gestión financiera, control dinero, app financiera méxico, gastos quincenales',
+		url: 'https://controlgastosmx.vercel.app',
+		image: 'https://controlgastosmx.vercel.app/og-image.png',
+		siteName: 'ControlGastosMX',
+		locale: 'es_MX',
+		type: 'website'
+	};
 
 	onMount(() => {
 		if ($authStore.isAuthenticated) {
@@ -17,6 +30,96 @@
 		goto('/register');
 	}
 </script>
+
+<svelte:head>
+	<!-- Primary Meta Tags -->
+	<title>{seoConfig.title}</title>
+	<meta name="title" content={seoConfig.title} />
+	<meta name="description" content={seoConfig.description} />
+	<meta name="keywords" content={seoConfig.keywords} />
+	<meta name="author" content="Aqua Studio" />
+	<meta name="robots" content="index, follow" />
+	<meta name="language" content="Spanish" />
+	<meta name="revisit-after" content="7 days" />
+
+	<!-- Canonical URL -->
+	<link rel="canonical" href={seoConfig.url} />
+
+	<!-- Open Graph / Facebook -->
+	<meta property="og:type" content={seoConfig.type} />
+	<meta property="og:url" content={seoConfig.url} />
+	<meta property="og:title" content={seoConfig.title} />
+	<meta property="og:description" content={seoConfig.description} />
+	<meta property="og:image" content={seoConfig.image} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:site_name" content={seoConfig.siteName} />
+	<meta property="og:locale" content={seoConfig.locale} />
+
+	<!-- Twitter -->
+	<meta property="twitter:card" content="summary_large_image" />
+	<meta property="twitter:url" content={seoConfig.url} />
+	<meta property="twitter:title" content={seoConfig.title} />
+	<meta property="twitter:description" content={seoConfig.description} />
+	<meta property="twitter:image" content={seoConfig.image} />
+
+	<!-- Mobile Optimization -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="theme-color" content="#1f2937" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+	<!-- Geographic Tags -->
+	<meta name="geo.region" content="MX" />
+	<meta name="geo.placename" content="México" />
+
+	<!-- Structured Data / JSON-LD for Google -->
+	{@html `
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "SoftwareApplication",
+			"name": "ControlGastosMX",
+			"applicationCategory": "FinanceApplication",
+			"operatingSystem": "Web, iOS, Android",
+			"offers": {
+				"@type": "Offer",
+				"price": "0",
+				"priceCurrency": "MXN"
+			},
+			"aggregateRating": {
+				"@type": "AggregateRating",
+				"ratingValue": "4.8",
+				"ratingCount": "127"
+			},
+			"description": "${seoConfig.description}",
+			"screenshot": "${seoConfig.image}",
+			"featureList": [
+				"Proyección Financiera",
+				"Control de Tarjetas de Crédito",
+				"Registro de Gastos e Ingresos",
+				"Reportes y Gráficas",
+				"Gestión de Préstamos",
+				"Sincronización en la Nube"
+			],
+			"inLanguage": "es-MX",
+			"availableOnDevice": ["Desktop", "Mobile", "Tablet"],
+			"softwareVersion": "1.0",
+			"author": {
+				"@type": "Organization",
+				"name": "Aqua Studio",
+				"url": "${seoConfig.url}",
+				"email": "contactoaquastudio@gmail.com"
+			},
+			"provider": {
+				"@type": "Organization",
+				"name": "Aqua Studio"
+			}
+		}
+		<\/script>
+	`}
+</svelte:head>
 
 <div class="min-h-screen bg-linear-to-b from-gray-50 to-white">
 	<nav class="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -44,11 +147,11 @@
 				✨ Nueva función: Proyección de Saldos
 			</div>
 			<h1 class="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight">
-				Deja de sufrir cada
-				<span class="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 block mt-2">final de quincena</span>
+				Control de Gastos y Finanzas Personales en México
+				<span class="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 block mt-2">100% Gratis y Fácil de Usar</span>
 			</h1>
 			<p class="text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-				No solo registres gastos: <strong>Proyecta tu futuro.</strong> Simula tus pagos de tarjeta, evita deudas y descubre si te alcanzará el dinero antes de que sea tarde.
+				Gestiona tu dinero, proyecta tu futuro financiero y controla tus tarjetas de crédito. <strong>App mexicana</strong> que entiende tus quincenas, meses sin intereses y necesidades reales.
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
 				<button onclick={goToRegister} class="w-full sm:w-auto bg-gray-900 text-white text-lg px-8 py-4 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1">

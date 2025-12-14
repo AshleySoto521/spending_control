@@ -1,3 +1,49 @@
-# allow crawling everything by default
+# robots.txt para ControlGastosMX
+# Permite a los buscadores indexar la landing page y páginas públicas
+# Bloquea áreas privadas y de autenticación
+
 User-agent: *
-Disallow:
+Allow: /
+Allow: /terminos
+Allow: /privacidad
+
+# Bloquear rutas de autenticación y privadas
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /resend-verification
+Disallow: /egresos
+Disallow: /ingresos
+Disallow: /tarjetas
+Disallow: /pagos-tarjetas
+Disallow: /prestamos
+Disallow: /proyeccion
+Disallow: /proximos-pagos-tarjetas
+
+# Sitemap
+Sitemap: https://controlgastosmx.vercel.app/sitemap.xml
+
+# Configuración para crawlers específicos
+User-agent: Googlebot
+Allow: /
+Disallow: /dashboard
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /dashboard
+Disallow: /api/
+
+# Bloquear bots maliciosos conocidos
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
