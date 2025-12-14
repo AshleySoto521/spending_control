@@ -8,11 +8,20 @@ import { crearSesion, registrarLog } from '$lib/server/security';
 export const POST: RequestHandler = async (event) => {
 	const { request, cookies } = event;
 	try {
-		const { nombre, email, celular, password } = await request.json();
+		const { nombre, email, celular, password, aceptoTerminos, aceptoPrivacidad } = await request.json();
 
 		// Validaciones
 		if (!nombre || !email || !celular || !password) {
 			return json({ error: 'Nombre, email, celular y contraseña son requeridos' }, { status: 400 });
+		}
+
+		// Validar aceptación de términos y privacidad
+		if (!aceptoTerminos) {
+			return json({ error: 'Debes aceptar los Términos y Condiciones' }, { status: 400 });
+		}
+
+		if (!aceptoPrivacidad) {
+			return json({ error: 'Debes aceptar el Aviso de Privacidad' }, { status: 400 });
 		}
 
 		if (password.length < 8) {
@@ -38,8 +47,8 @@ export const POST: RequestHandler = async (event) => {
 
 		// Insertar usuario
 		const result = await query(
-			'INSERT INTO usuarios (nombre, email, celular, password_hash) VALUES ($1, $2, $3, $4) RETURNING id_usuario, nombre, email, celular',
-			[nombre, email, celular, passwordHash]
+			'INSERT INTO usuarios (nombre, email, celular, password_hash, acepto_terminos, acepto_privacidad) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_usuario, nombre, email, celular',
+			[nombre, email, celular, passwordHash, aceptoTerminos, aceptoPrivacidad]
 		);
 
 		const user = result.rows[0];

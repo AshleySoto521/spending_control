@@ -374,13 +374,23 @@
 							<label for="clabe" class="block text-sm font-medium text-gray-700 mb-2">CLABE (opcional)</label>
 							<input
 								id="clabe"
+								type="text"
 								bind:value={formData.clabe}
-								minlength="18"
 								maxlength="18"
-								pattern="[0-9]{18}"
 								class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 "
 								placeholder="18 dígitos"
+								oninput={(e) => {
+									const target = e.currentTarget;
+									// Eliminar cualquier caracter que no sea número
+									formData.clabe = target.value.replace(/\D/g, '');
+								}}
 							/>
+							<div class="flex justify-between mt-1">
+								<p class="text-xs text-gray-500">Solo números</p>
+								<p class="text-xs text-gray-400">
+									{formData.clabe.length}/18
+								</p>
+							</div>
 						</div>
 
 						{#if formData.tipo_tarjeta !== 'SERVICIOS'}

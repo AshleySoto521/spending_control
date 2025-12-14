@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     es_admin BOOLEAN DEFAULT FALSE,
     token_recuperacion VARCHAR(255),
     token_expiracion TIMESTAMP,
+    acepto_terminos BOOLEAN DEFAULT FALSE NOT NULL,
+    acepto_privacidad BOOLEAN DEFAULT FALSE NOT NULL,
     CHECK (celular IS NULL OR LENGTH(celular) = 10)
 );
 
