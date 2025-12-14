@@ -7,7 +7,9 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
 
-		// 1. Obtener saldo actual (Ingresos - Egresos - Pagos ya realizados)
+		// 1. Obtener saldo actual (Ingresos - Egresos)
+		// Los pagos de tarjeta ahora se registran automáticamente como egresos
+		// por lo que ya están incluidos en totalEgresos
 		const totalIngresos = await query(
 			`SELECT COALESCE(SUM(i.monto), 0) as total
 			FROM ingresos i
@@ -26,18 +28,8 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
-		const totalPagosTarjeta = await query(
-			`SELECT COALESCE(SUM(pt.monto), 0) as total
-			FROM pagos_tarjetas pt
-			JOIN formas_pago fp ON pt.id_forma_pago = fp.id_forma_pago
-			WHERE pt.id_usuario = $1
-			AND UPPER(fp.tipo) IN ('EFECTIVO', 'TRANSFERENCIA')`,
-			[userId]
-		);
-
 		const saldoActual = parseFloat(totalIngresos.rows[0].total) -
-		                    parseFloat(totalEgresos.rows[0].total) -
-		                    parseFloat(totalPagosTarjeta.rows[0].total);
+		                    parseFloat(totalEgresos.rows[0].total);
 
 		// 2. Obtener pagos pendientes de tarjetas (Deuda inmediata)
 		const pagosPendientes = await query(
