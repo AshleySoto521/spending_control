@@ -41,6 +41,7 @@
 	<meta name="robots" content="index, follow" />
 	<meta name="language" content="Spanish" />
 	<meta name="revisit-after" content="7 days" />
+	<meta name="google-site-verification" content="OM_u7TYFSxjbnkEVYcjSFBXjM80NWmFtdMNw1WS1_gs" />
 
 	<!-- Canonical URL -->
 	<link rel="canonical" href={seoConfig.url} />
