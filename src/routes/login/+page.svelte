@@ -20,8 +20,16 @@
 			savedEmail = stored;
 			email = stored;
 			showEmailField = false;
+			// Dar foco al campo de password si hay email guardado
+			setTimeout(() => {
+				document.getElementById('password')?.focus();
+			}, 0);
 		} else {
 			showEmailField = true;
+			// Dar foco al campo de email si no hay email guardado
+			setTimeout(() => {
+				document.getElementById('email')?.focus();
+			}, 0);
 		}
 	});
 
@@ -115,7 +123,6 @@
 						required
 						class="input-minimal"
 						placeholder="tu@email.com"
-						autofocus
 					/>
 				{/if}
 			</div>
@@ -131,7 +138,6 @@
 					required
 					class="input-minimal"
 					placeholder="••••••••"
-					autofocus={!showEmailField && !!savedEmail}
 				/>
 			</div>
 

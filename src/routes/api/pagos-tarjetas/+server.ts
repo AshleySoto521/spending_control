@@ -55,15 +55,17 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'El monto debe ser mayor a 0' }, { status: 400 });
 		}
 
-		// Verificar que la tarjeta pertenece al usuario
+		// Verificar que la tarjeta pertenece al usuario y obtener sus datos
 		const tarjetaCheck = await query(
-			`SELECT id_tarjeta, saldo_usado FROM tarjetas WHERE id_tarjeta = $1 AND id_usuario = $2`,
+			`SELECT id_tarjeta, saldo_usado, nom_tarjeta, banco FROM tarjetas WHERE id_tarjeta = $1 AND id_usuario = $2`,
 			[id_tarjeta, userId]
 		);
 
 		if (tarjetaCheck.rows.length === 0) {
 			return json({ error: 'Tarjeta no encontrada' }, { status: 404 });
 		}
+
+		const tarjeta = tarjetaCheck.rows[0];
 
 		// Verificar que la forma de pago sea efectivo o transferencia
 		const formaPagoCheck = await query(
@@ -89,6 +91,17 @@ export const POST: RequestHandler = async (event) => {
 				VALUES ($1, $2, $3, $4, $5, $6)
 				RETURNING *`,
 				[userId, id_tarjeta, fecha_pago, monto, id_forma_pago, descripcion || null]
+			);
+
+			// Registrar automáticamente el pago como un egreso
+			const conceptoEgreso = `Pago de tarjeta - ${tarjeta.nom_tarjeta}`;
+			const establecimientoEgreso = tarjeta.banco || 'Banco';
+			const descripcionEgreso = descripcion || 'Pago de tarjeta de crédito';
+
+			await query(
+				`INSERT INTO egresos (id_usuario, fecha_egreso, concepto, establecimiento, monto, id_forma_pago, descripcion, compra_meses)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)`,
+				[userId, fecha_pago, conceptoEgreso, establecimientoEgreso, monto, id_forma_pago, descripcionEgreso]
 			);
 
 			// Si se seleccionaron cuotas MSI, incrementar meses_pagados
