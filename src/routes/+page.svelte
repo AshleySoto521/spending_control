@@ -10,7 +10,7 @@
 		description: 'App gratuita de control de gastos para México. Proyecta tu futuro financiero, gestiona tarjetas de crédito, registra ingresos y egresos. Herramienta 100% gratis hecha para mexicanos.',
 		keywords: 'control de gastos, finanzas personales méxico, app gastos gratis, control tarjetas crédito, presupuesto personal, gestión financiera, control dinero, app financiera méxico, gastos quincenales',
 		url: 'https://controlgastosmx.vercel.app',
-		image: 'https://controlgastosmx.vercel.app/og-image.png',
+		image: 'https://controlgastosmx.vercel.app/icons/windows11/SplashScreen.scale-400.png',
 		siteName: 'ControlGastosMX',
 		locale: 'es_MX',
 		type: 'website'

@@ -10,6 +10,32 @@ export interface CookieConsent {
 	consentDate: string | null; // Fecha del consentimiento
 }
 
+// Función para guardar el consentimiento en el servidor
+async function saveConsentToServer(consent: CookieConsent): Promise<void> {
+	if (!browser) return;
+
+	try {
+		const response = await fetch('/api/user/cookie-consent', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				analytics: consent.analytics,
+				marketing: consent.marketing,
+				preferences: consent.preferences,
+				consentDate: consent.consentDate
+			})
+		});
+
+		if (!response.ok) {
+			console.warn('No se pudo guardar el consentimiento en el servidor (usuario posiblemente no autenticado)');
+		}
+	} catch (error) {
+		console.warn('Error al guardar consentimiento en el servidor:', error);
+	}
+}
+
 const CONSENT_KEY = 'cookie_consent';
 const CONSENT_VERSION = '1.0'; // Para poder pedir nuevo consentimiento si cambian las políticas
 
@@ -69,6 +95,9 @@ function createCookieConsentStore() {
 			}
 
 			set(consent);
+
+			// Guardar en el servidor (si el usuario está autenticado)
+			saveConsentToServer(consent);
 		},
 
 		// Rechazar cookies opcionales (solo necesarias)
@@ -93,6 +122,9 @@ function createCookieConsentStore() {
 			}
 
 			set(consent);
+
+			// Guardar en el servidor (si el usuario está autenticado)
+			saveConsentToServer(consent);
 		},
 
 		// Configuración personalizada
@@ -112,6 +144,9 @@ function createCookieConsentStore() {
 						consent: newConsent
 					}));
 				}
+
+				// Guardar en el servidor (si el usuario está autenticado)
+				saveConsentToServer(newConsent);
 
 				return newConsent;
 			});
