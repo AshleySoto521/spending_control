@@ -44,8 +44,8 @@
 
 <svelte:window onclick={closeDropdowns} />
 
-<nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<div class="flex justify-between h-16">
 			
 			<div class="flex">
@@ -168,7 +168,7 @@
 	</div>
 
 	{#if mobileMenuOpen}
-		<div class="md:hidden bg-white border-t border-gray-200 shadow-lg absolute w-full z-50 max-h-[90vh] overflow-y-auto">
+		<div class="md:hidden bg-white border-t border-gray-200 shadow-lg absolute w-full z-50 max-h-[90vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
 			<div class="pt-2 pb-4 space-y-1">
 				
 				<a href="/dashboard" class="{baseMobileLink} {$page.url.pathname === '/dashboard' ? activeMobileLink : ''}">
