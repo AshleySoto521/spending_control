@@ -14,3 +14,4 @@ psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control
 psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\006_add_pagos_to_periodo_view.sql
 psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\005_migrate_pagos_tarjetas_to_egresos.sql
 psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\008_add_cookie_consent.sql
+psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\009_fix_saldo_tarjeta_pagos.sql

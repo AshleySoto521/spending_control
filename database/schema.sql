@@ -439,6 +439,7 @@ BEGIN
     IF NEW.id_tarjeta IS NOT NULL THEN
         UPDATE tarjetas
         SET saldo_usado = (
+            -- Suma de egresos
             SELECT COALESCE(SUM(
                 CASE
                     -- Para compras a meses, solo sumar las cuotas pendientes
@@ -451,6 +452,11 @@ BEGIN
             ), 0)
             FROM egresos e
             WHERE e.id_tarjeta = NEW.id_tarjeta
+        ) - (
+            -- Restar suma de pagos realizados
+            SELECT COALESCE(SUM(p.monto), 0)
+            FROM pagos_tarjetas p
+            WHERE p.id_tarjeta = NEW.id_tarjeta
         )
         WHERE id_tarjeta = NEW.id_tarjeta;
     END IF;
@@ -477,6 +483,7 @@ BEGIN
     IF OLD.id_tarjeta IS NOT NULL THEN
         UPDATE tarjetas
         SET saldo_usado = (
+            -- Suma de egresos
             SELECT COALESCE(SUM(
                 CASE
                     -- Para compras a meses, solo sumar las cuotas pendientes
@@ -489,6 +496,11 @@ BEGIN
             ), 0)
             FROM egresos e
             WHERE e.id_tarjeta = OLD.id_tarjeta
+        ) - (
+            -- Restar suma de pagos realizados
+            SELECT COALESCE(SUM(p.monto), 0)
+            FROM pagos_tarjetas p
+            WHERE p.id_tarjeta = OLD.id_tarjeta
         )
         WHERE id_tarjeta = OLD.id_tarjeta;
     END IF;
@@ -501,52 +513,6 @@ CREATE TRIGGER trigger_actualizar_saldo_delete
 AFTER DELETE ON egresos
 FOR EACH ROW
 EXECUTE FUNCTION actualizar_saldo_tarjeta_delete();
-
--- Función para actualizar saldo usado de tarjetas cuando se registra un pago
-CREATE OR REPLACE FUNCTION actualizar_saldo_pago_tarjeta()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF TG_OP = 'DELETE' THEN
-        -- Al eliminar un pago, aumenta el saldo usado
-        UPDATE tarjetas
-        SET saldo_usado = saldo_usado + OLD.monto
-        WHERE id_tarjeta = OLD.id_tarjeta;
-        RETURN OLD;
-    ELSE
-        -- Al insertar o actualizar un pago, disminuye el saldo usado
-        IF TG_OP = 'UPDATE' THEN
-            -- Primero revertir el pago anterior
-            UPDATE tarjetas
-            SET saldo_usado = saldo_usado + OLD.monto
-            WHERE id_tarjeta = OLD.id_tarjeta;
-        END IF;
-
-        -- Aplicar el nuevo pago
-        UPDATE tarjetas
-        SET saldo_usado = GREATEST(saldo_usado - NEW.monto, 0)
-        WHERE id_tarjeta = NEW.id_tarjeta;
-        RETURN NEW;
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger para actualizar saldo de tarjeta al insertar pago
-CREATE TRIGGER trigger_actualizar_saldo_pago_insert
-AFTER INSERT ON pagos_tarjetas
-FOR EACH ROW
-EXECUTE FUNCTION actualizar_saldo_pago_tarjeta();
-
--- Trigger para actualizar saldo de tarjeta al actualizar pago
-CREATE TRIGGER trigger_actualizar_saldo_pago_update
-AFTER UPDATE ON pagos_tarjetas
-FOR EACH ROW
-EXECUTE FUNCTION actualizar_saldo_pago_tarjeta();
-
--- Trigger para actualizar saldo de tarjeta al eliminar pago
-CREATE TRIGGER trigger_actualizar_saldo_pago_delete
-AFTER DELETE ON pagos_tarjetas
-FOR EACH ROW
-EXECUTE FUNCTION actualizar_saldo_pago_tarjeta();
 
 -- Tabla de sesiones activas
 CREATE TABLE IF NOT EXISTS sesiones (
