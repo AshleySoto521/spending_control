@@ -7,7 +7,7 @@
 	let mobileMenuOpen = $state(false);
 	
 	// Estado para los dropdowns de escritorio
-	let activeDropdown = $state(''); // '' | 'movimientos' | 'creditos'
+	let activeDropdown = $state(''); // '' | 'movimientos' | 'creditos' | 'usuario'
 
 	// Definición de estilos base para reutilizar (Reemplazo de @apply)
 	const baseMobileLink = "block pl-4 pr-4 py-2.5 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors border-l-4 border-transparent";
@@ -135,18 +135,31 @@
 
 			<div class="flex items-center gap-4">
 				<div class="hidden md:flex items-center gap-4">
-					<div class="text-sm text-right hidden lg:block">
-						<p class="font-medium text-gray-900">{$authStore.user?.nombre || 'Usuario'}</p>
+					<div class="relative dropdown-container">
+						<button
+							onclick={(e) => { e.stopPropagation(); activeDropdown = activeDropdown === 'usuario' ? '' : 'usuario'; }}
+							class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+						>
+							<div class="text-sm text-right hidden lg:block">
+								<p class="font-medium text-gray-900">{$authStore.user?.nombre || 'Usuario'}</p>
+							</div>
+							<div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-lg">
+								👤
+							</div>
+							<svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+							</svg>
+						</button>
+
+						{#if activeDropdown === 'usuario'}
+							<div class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50">
+								<a href="/perfil" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">👤 Mi Perfil</a>
+								<a href="/ayuda" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">❓ Ayuda</a>
+								<div class="border-t border-gray-100 my-1"></div>
+								<button onclick={handleLogout} class="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">🚪 Cerrar Sesión</button>
+							</div>
+						{/if}
 					</div>
-					<button
-						onclick={handleLogout}
-						class="text-gray-500 hover:text-red-600 transition p-2 rounded-full hover:bg-gray-100"
-						title="Cerrar Sesión"
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-						</svg>
-					</button>
 				</div>
 
 				<div class="flex items-center md:hidden">
@@ -222,10 +235,11 @@
 						<div class="text-xs text-gray-500">{$authStore.user?.email}</div>
 					</div>
 				</div>
-				<div class="grid grid-cols-2 gap-3">
-					<a href="/perfil" class="{btnGhost} justify-center text-sm">Mi Perfil</a>
-					<button onclick={handleLogout} class="{btnGhost} text-red-600 justify-center text-sm">Cerrar Sesión</button>
+				<div class="grid grid-cols-2 gap-3 mb-3">
+					<a href="/perfil" class="{btnGhost} justify-center text-sm">👤 Perfil</a>
+					<a href="/ayuda" class="{btnGhost} justify-center text-sm">❓ Ayuda</a>
 				</div>
+				<button onclick={handleLogout} class="{btnGhost} text-red-600 justify-center text-sm w-full">🚪 Cerrar Sesión</button>
 			</div>
 		</div>
 	{/if}
