@@ -60,9 +60,9 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'El monto debe ser mayor a cero' }, { status: 400 });
 		}
 
-		// Verificar que el préstamo pertenece al usuario
+		// Verificar que el préstamo pertenece al usuario y obtener sus datos
 		const checkOwnership = await query(
-			'SELECT id_prestamo FROM prestamos WHERE id_prestamo = $1 AND id_usuario = $2',
+			'SELECT id_prestamo, institucion, tipo_prestamo FROM prestamos WHERE id_prestamo = $1 AND id_usuario = $2',
 			[id_prestamo, userId]
 		);
 
@@ -70,13 +70,39 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Préstamo no encontrado' }, { status: 404 });
 		}
 
-		// Registrar el pago
+		const prestamo = checkOwnership.rows[0];
+
+		// Registrar el pago en la tabla de pagos_prestamos
 		const result = await query(
 			`INSERT INTO pagos_prestamos (
 				id_usuario, id_prestamo, fecha_pago, monto, id_forma_pago, descripcion
 			) VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING *`,
 			[userId, id_prestamo, fecha_pago, monto, id_forma_pago, descripcion || null]
+		);
+
+		// Registrar también como egreso para que afecte el saldo actual
+		const conceptoEgreso = `Pago de préstamo ${prestamo.tipo_prestamo.toLowerCase()}`;
+		const establecimientoEgreso = prestamo.institucion;
+		const descripcionEgreso = descripcion
+			? `${descripcion} (Préstamo #${id_prestamo})`
+			: `Pago de préstamo #${id_prestamo}`;
+
+		await query(
+			`INSERT INTO egresos (
+				id_usuario, fecha_egreso, concepto, establecimiento, monto,
+				id_forma_pago, descripcion, compra_meses
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			[
+				userId,
+				fecha_pago,
+				conceptoEgreso,
+				establecimientoEgreso,
+				monto,
+				id_forma_pago,
+				descripcionEgreso,
+				false
+			]
 		);
 
 		return json(
@@ -106,9 +132,9 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'ID de pago requerido' }, { status: 400 });
 		}
 
-		// Verificar que el pago pertenece al usuario
+		// Obtener los datos del pago antes de eliminarlo para poder eliminar el egreso correspondiente
 		const checkOwnership = await query(
-			'SELECT id_pago FROM pagos_prestamos WHERE id_pago = $1 AND id_usuario = $2',
+			'SELECT id_pago, fecha_pago, monto, id_prestamo FROM pagos_prestamos WHERE id_pago = $1 AND id_usuario = $2',
 			[id_pago, userId]
 		);
 
@@ -116,9 +142,24 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'Pago no encontrado' }, { status: 404 });
 		}
 
+		const pago = checkOwnership.rows[0];
+
+		// Eliminar el pago de la tabla pagos_prestamos
 		await query(
 			'DELETE FROM pagos_prestamos WHERE id_pago = $1 AND id_usuario = $2',
 			[id_pago, userId]
+		);
+
+		// Eliminar también el egreso correspondiente
+		// Buscamos por fecha, monto, usuario y el patrón del concepto para identificar el egreso correcto
+		await query(
+			`DELETE FROM egresos
+			WHERE id_usuario = $1
+			AND fecha_egreso = $2
+			AND monto = $3
+			AND concepto LIKE 'Pago de préstamo%'
+			AND descripcion LIKE $4`,
+			[userId, pago.fecha_pago, pago.monto, `%Préstamo #${pago.id_prestamo}%`]
 		);
 
 		return json({ message: 'Pago eliminado exitosamente' });
