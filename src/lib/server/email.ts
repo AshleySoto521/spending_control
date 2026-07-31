@@ -1,54 +1,102 @@
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import {
-	EMAIL_HOST,
-	EMAIL_PORT,
-	EMAIL_USER,
-	EMAIL_PASS,
-	EMAIL_FROM,
-	NODE_ENV
-} from '$env/static/private';
+import { env } from '$env/dynamic/private';
+
+/**
+ * Igual que en `db.ts` y `cookies.ts`: recorta comentarios en línea y espacios.
+ *
+ * Este módulo era el único que leía el entorno en crudo, y el `.env` del
+ * proyecto sí usa comentarios al final de la línea. Si `NODE_ENV` llegaba como
+ * `production  # ...`, la comparación con 'production' fallaba y la
+ * verificación del certificado TLS del servidor SMTP quedaba desactivada: con
+ * eso, quien se interponga en la red lee la contraseña de la cuenta de correo
+ * y los enlaces de recuperación que se están enviando.
+ */
+function limpiar(valor: string | undefined): string | undefined {
+	if (valor === undefined || valor === null) return undefined;
+	const limpio = String(valor).split('#')[0].trim();
+	return limpio === '' ? undefined : limpio;
+}
+
+const EMAIL_HOST = limpiar(env.EMAIL_HOST);
+const EMAIL_PORT = limpiar(env.EMAIL_PORT);
+const EMAIL_USER = limpiar(env.EMAIL_USER);
+const EMAIL_PASS = limpiar(env.EMAIL_PASS);
+const EMAIL_FROM = limpiar(env.EMAIL_FROM);
+const esProduccion = limpiar(env.NODE_ENV) === 'production';
+
+/**
+ * Escotilla de escape explícita para un servidor SMTP interno con certificado
+ * autofirmado. Fuera de ese caso no debe activarse: desactivar la verificación
+ * reabre la puerta a un intermediario.
+ */
+const tlsInseguroPermitido = limpiar(env.EMAIL_TLS_INSECURE) === 'true';
 
 // Configuración del transporter
 let transporter: Transporter | null = null;
 
 function getTransporter(): Transporter {
 	if (!transporter) {
+		if (tlsInseguroPermitido) {
+			console.warn(
+				'[email] EMAIL_TLS_INSECURE=true: la verificación del certificado SMTP está DESACTIVADA.'
+			);
+		}
+
 		const config = {
 			host: EMAIL_HOST || 'smtp.gmail.com',
-			port: parseInt(EMAIL_PORT || '587'),
+			port: Number.parseInt(EMAIL_PORT || '587', 10) || 587,
 			secure: false, // true para 465, false para otros puertos
 			auth: {
 				user: EMAIL_USER,
 				pass: EMAIL_PASS
 			},
-			// Opciones adicionales para Gmail
+			// La verificación del certificado está activa siempre salvo que se
+			// pida lo contrario de forma explícita. Antes dependía de que
+			// NODE_ENV valiera exactamente 'production'.
 			tls: {
-				rejectUnauthorized: NODE_ENV === 'production'
+				rejectUnauthorized: !tlsInseguroPermitido
 			},
 			// Timeout más largo
 			connectionTimeout: 10000,
 			greetingTimeout: 10000,
 			socketTimeout: 10000,
 			// Debug en desarrollo
-			debug: NODE_ENV === 'development',
-			logger: NODE_ENV === 'development'
+			debug: !esProduccion,
+			logger: !esProduccion
 		};
 
-		console.log('Configurando transporter de email:', {
-			host: config.host,
-			port: config.port,
-			user: config.auth.user,
-			secure: config.secure
-		});
+		if (!esProduccion) {
+			console.log('Configurando transporter de email:', {
+				host: config.host,
+				port: config.port,
+				user: config.auth.user,
+				secure: config.secure
+			});
+		}
 
 		transporter = nodemailer.createTransport(config);
 	}
 	return transporter;
 }
 
+/**
+ * Escapa el texto que se interpola en la plantilla HTML del correo.
+ * `nombre` lo elige la propia persona al registrarse y no se filtra en ningún
+ * punto, así que sin escapar podría romper el marcado del mensaje.
+ */
+function escaparHtml(valor: string): string {
+	return valor
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
 // Plantilla de email para recuperación de contraseña
-function getResetPasswordTemplate(nombre: string, resetLink: string): string {
+function getResetPasswordTemplate(nombreSinEscapar: string, resetLink: string): string {
+	const nombre = escaparHtml(nombreSinEscapar);
 	return `
 <!DOCTYPE html>
 <html lang="es">
@@ -174,9 +222,14 @@ export async function sendResetPasswordEmail(
 	resetLink: string
 ): Promise<{ success: boolean; error?: string; messageId?: string }> {
 	try {
-		console.log('=== Iniciando envío de email ===');
-		console.log('Destinatario:', email);
-		console.log('Nombre:', nombre);
+		// El destinatario y su nombre solo se registran en desarrollo: en
+		// producción los logs de la función persisten y esto es información
+		// personal de quien está recuperando su cuenta.
+		if (!esProduccion) {
+			console.log('=== Iniciando envío de email ===');
+			console.log('Destinatario:', email);
+			console.log('Nombre:', nombre);
+		}
 
 		// Validar configuración de email
 		if (!EMAIL_USER || !EMAIL_PASS) {
@@ -187,8 +240,6 @@ export async function sendResetPasswordEmail(
 			};
 		}
 
-		console.log('✓ Variables de entorno configuradas');
-
 		const transport = getTransporter();
 
 		const mailOptions = {
@@ -198,12 +249,13 @@ export async function sendResetPasswordEmail(
 			html: getResetPasswordTemplate(nombre, resetLink)
 		};
 
-		console.log('Enviando email...');
 		const info = await transport.sendMail(mailOptions);
 
-		console.log('✓ Email enviado exitosamente');
-		console.log('Message ID:', info.messageId);
-		console.log('Response:', info.response);
+		if (!esProduccion) {
+			console.log('✓ Email enviado exitosamente');
+			console.log('Message ID:', info.messageId);
+			console.log('Response:', info.response);
+		}
 
 		return {
 			success: true,

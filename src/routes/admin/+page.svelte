@@ -35,7 +35,7 @@
 		try {
 			const token = $authStore.token;
 			const response = await fetch('/api/admin/usuarios', {
-				headers: { Authorization: `Bearer ${token}` }
+				headers: {}
 			});
 
 			if (!response.ok) {
@@ -58,7 +58,7 @@
 		try {
 			const token = $authStore.token;
 			const response = await fetch('/api/admin/usuarios', {
-				headers: { Authorization: `Bearer ${token}` }
+				headers: {}
 			});
 
 			if (!response.ok) throw new Error('Error al cargar usuarios');
@@ -84,7 +84,7 @@
 			if (filterFechaFin) url += `&fecha_fin=${filterFechaFin}`;
 
 			const response = await fetch(url, {
-				headers: { Authorization: `Bearer ${token}` }
+				headers: {}
 			});
 
 			if (!response.ok) throw new Error('Error al cargar logs');
@@ -106,7 +106,7 @@
 			const token = $authStore.token;
 			const response = await fetch(`/api/admin/usuarios/${selectedUser.id_usuario}`, {
 				method: 'DELETE',
-				headers: { Authorization: `Bearer ${token}` }
+				headers: {}
 			});
 
 			const data = await response.json();
@@ -131,8 +131,8 @@
 			return;
 		}
 
-		if (nuevaPassword.length < 8) {
-			error = 'La contraseña debe tener al menos 8 caracteres';
+		if (nuevaPassword.length < 10) {
+			error = 'La contraseña debe tener al menos 10 caracteres';
 			return;
 		}
 
@@ -141,7 +141,6 @@
 			const response = await fetch(`/api/admin/usuarios/${selectedUser.id_usuario}`, {
 				method: 'PATCH',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
@@ -171,7 +170,6 @@
 			const response = await fetch(`/api/admin/usuarios/${user.id_usuario}`, {
 				method: 'PATCH',
 				headers: {
-					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
@@ -191,7 +189,7 @@
 		try {
 			const token = $authStore.token;
 			const response = await fetch('/api/admin/exportar-usuarios', {
-				headers: { Authorization: `Bearer ${token}` }
+				headers: {}
 			});
 
 			if (!response.ok) throw new Error('Error al exportar usuarios');
@@ -526,7 +524,7 @@
 							type="password"
 							bind:value={nuevaPassword}
 							class="input-minimal"
-							placeholder="Mínimo 8 caracteres"
+							placeholder="Mínimo 10 caracteres"
 						/>
 					</div>
 					<div>

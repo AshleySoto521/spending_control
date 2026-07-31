@@ -6,6 +6,7 @@
 	import ExportModal from '$lib/components/ExportModal.svelte';
 	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost, apiPut, apiDelete } from '$lib/utils/apiClient';
+	import { presentarSaldo, calcularDisponible } from '$lib/utils/saldo';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -264,6 +265,7 @@
 
 						<!-- Cards de Tarjetas -->
 						{#each resumenTarjetas as tarjeta}
+							{@const saldo = presentarSaldo(tarjeta.saldo_usado)}
 							<button
 								type="button"
 								class="bg-white rounded-xl shadow-sm border-2 p-6 cursor-pointer hover:shadow-md transition text-left w-full"
@@ -291,12 +293,16 @@
 
 									<div class="grid grid-cols-2 gap-2 text-sm">
 										<div>
-											<p class="text-gray-600">Saldo usado:</p>
-											<p class="font-medium text-gray-900">{formatCurrency(parseFloat(tarjeta.saldo_usado))}</p>
+											<p class="text-gray-600">{saldo.aFavor ? 'Saldo a favor:' : 'Saldo usado:'}</p>
+											<p class="font-medium {saldo.aFavor ? 'text-green-600' : 'text-gray-900'}">
+												{formatCurrency(saldo.monto)}
+											</p>
 										</div>
 										<div>
 											<p class="text-gray-600">Disponible:</p>
-											<p class="font-medium text-green-600">{formatCurrency(parseFloat(tarjeta.linea_credito) - parseFloat(tarjeta.saldo_usado))}</p>
+											<p class="font-medium text-green-600">
+												{formatCurrency(calcularDisponible(tarjeta.linea_credito, tarjeta.saldo_usado))}
+											</p>
 										</div>
 									</div>
 

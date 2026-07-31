@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
+import { leerPaginacion } from '$lib/server/paginacion';
 import { requireAdmin } from '$lib/server/middleware';
 
 // GET - Listar logs de seguridad (solo admin)
@@ -9,8 +10,10 @@ export const GET: RequestHandler = async (event) => {
 		await requireAdmin(event);
 
 		const url = new URL(event.request.url);
-		const limit = parseInt(url.searchParams.get('limit') || '100');
-		const offset = parseInt(url.searchParams.get('offset') || '0');
+		const { limit, offset } = leerPaginacion(url, {
+			limitPorDefecto: 100,
+			limitMaximo: 1000
+		});
 		const tipoEvento = url.searchParams.get('tipo_evento') || '';
 		const fechaInicio = url.searchParams.get('fecha_inicio') || '';
 		const fechaFin = url.searchParams.get('fecha_fin') || '';

@@ -2,22 +2,64 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
+import { fechaISO, nombreArchivoSeguro } from '$lib/server/validacion';
 import * as XLSX from 'xlsx';
+
+/** Fila de una hoja de cálculo: cada celda es texto o número. */
+type FilaExcel = Record<string, string | number>;
 
 // Función auxiliar para formatear fechas sin conversión de zona horaria
 function formatDate(dateString: string): string {
 	return new Date(dateString).toLocaleDateString('es-MX', { timeZone: 'UTC' });
 }
 
+/**
+ * Excel no admite `[ ] : * ? / \` en el nombre de una hoja, ni nombres
+ * repetidos, ni más de 31 caracteres. El nombre viene del que la usuaria puso a
+ * su tarjeta, así que hay que normalizarlo: con una barra en el nombre, la
+ * generación del archivo fallaba con un 500.
+ */
+function nombreHojaSeguro(base: string, usados: Set<string>): string {
+	let nombre = (base || 'Tarjeta').replace(/[[\]:*?/\\]/g, '-').trim().slice(0, 31) || 'Tarjeta';
+
+	if (usados.has(nombre.toLowerCase())) {
+		let sufijo = 2;
+		let candidato = `${nombre.slice(0, 28)} ${sufijo}`;
+		while (usados.has(candidato.toLowerCase())) {
+			sufijo += 1;
+			candidato = `${nombre.slice(0, 28)} ${sufijo}`;
+		}
+		nombre = candidato;
+	}
+
+	usados.add(nombre.toLowerCase());
+	return nombre;
+}
+
 export const GET: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
 		const url = new URL(event.request.url);
-		const fechaInicio = url.searchParams.get('fecha_inicio');
-		const fechaFin = url.searchParams.get('fecha_fin');
+
+		// Las fechas se validan antes de tocar la base o la cabecera de
+		// respuesta: sin comprobar, un valor arbitrario llegaba a PostgreSQL
+		// como fecha (error 500) y al parámetro `filename` de
+		// Content-Disposition, donde unas comillas alteran la cabecera.
+		const fechaInicio = fechaISO(url.searchParams.get('fecha_inicio'));
+		const fechaFin = fechaISO(url.searchParams.get('fecha_fin'));
 
 		if (!fechaInicio || !fechaFin) {
-			return json({ error: 'Fecha de inicio y fin son requeridas' }, { status: 400 });
+			return json(
+				{ error: 'Fecha de inicio y fin son requeridas con formato YYYY-MM-DD' },
+				{ status: 400 }
+			);
+		}
+
+		if (fechaInicio > fechaFin) {
+			return json(
+				{ error: 'La fecha de inicio no puede ser posterior a la fecha de fin' },
+				{ status: 400 }
+			);
 		}
 
 		// Obtener todos los egresos del periodo
@@ -136,7 +178,11 @@ export const GET: RequestHandler = async (event) => {
 		XLSX.utils.book_append_sheet(workbook, ws1, 'Resumen General');
 
 		// HOJA 2: Resumen de Ingresos
-		const ingresosData = ingresosResult.rows.map((ingreso: any) => ({
+		// El tipo es explícito porque a estas filas se les añaden después una
+		// línea en blanco y una de totales, donde las columnas numéricas llevan
+		// texto vacío. Sin la anotación, TypeScript deduce `Monto: number` de la
+		// primera fila y rechaza esos añadidos.
+		const ingresosData: FilaExcel[] = ingresosResult.rows.map((ingreso: any) => ({
 			Fecha: formatDate(ingreso.fecha),
 			Tipo: ingreso.tipo_ingreso,
 			Monto: parseFloat(ingreso.monto),
@@ -163,7 +209,7 @@ export const GET: RequestHandler = async (event) => {
 		XLSX.utils.book_append_sheet(workbook, ws2, 'Ingresos');
 
 		// HOJA 3: Resumen de Egresos
-		const egresosData = egresosResult.rows.map((egreso: any) => {
+		const egresosData: FilaExcel[] = egresosResult.rows.map((egreso: any) => {
 			let tipoTarjeta = '';
 			if (egreso.tipo_tarjeta) {
 				const tipos: Record<string, string> = {
@@ -225,13 +271,15 @@ export const GET: RequestHandler = async (event) => {
 		XLSX.utils.book_append_sheet(workbook, ws3, 'Egresos');
 
 		// HOJAS ADICIONALES: Una por cada tarjeta
+		const nombresUsados = new Set(['resumen general', 'ingresos', 'egresos']);
+
 		for (const tarjeta of tarjetasResult.rows) {
 			const egresosTarjeta = egresosResult.rows.filter(
 				(e: any) => e.nom_tarjeta === tarjeta.nom_tarjeta
 			);
 
 			if (egresosTarjeta.length > 0) {
-				const tarjetaData = egresosTarjeta.map((egreso: any) => ({
+				const tarjetaData: FilaExcel[] = egresosTarjeta.map((egreso: any) => ({
 					Fecha: formatDate(egreso.fecha),
 					Concepto: egreso.concepto,
 					Establecimiento: egreso.establecimiento || '',
@@ -241,7 +289,10 @@ export const GET: RequestHandler = async (event) => {
 					Descripción: egreso.descripcion || ''
 				}));
 
-				const totalTarjeta = tarjetaData.reduce((sum, e) => sum + (e.Monto || 0), 0);
+				const totalTarjeta = tarjetaData.reduce(
+					(sum, e) => sum + (typeof e.Monto === 'number' ? e.Monto : 0),
+					0
+				);
 
 				tarjetaData.push({
 					Fecha: '',
@@ -263,7 +314,7 @@ export const GET: RequestHandler = async (event) => {
 				});
 
 				const wsTarjeta = XLSX.utils.json_to_sheet(tarjetaData);
-				const sheetName = `${tarjeta.nom_tarjeta}`.substring(0, 31); // Excel limita a 31 caracteres
+				const sheetName = nombreHojaSeguro(`${tarjeta.nom_tarjeta}`, nombresUsados);
 				XLSX.utils.book_append_sheet(workbook, wsTarjeta, sheetName);
 			}
 		}
@@ -272,10 +323,12 @@ export const GET: RequestHandler = async (event) => {
 		const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
 		// Retornar el archivo
+		const nombreArchivo = nombreArchivoSeguro(`reporte_${fechaInicio}_${fechaFin}`, 'reporte');
+
 		return new Response(excelBuffer, {
 			headers: {
 				'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-				'Content-Disposition': `attachment; filename="reporte_${fechaInicio}_${fechaFin}.xlsx"`
+				'Content-Disposition': `attachment; filename="${nombreArchivo}.xlsx"`
 			}
 		});
 	} catch (error: any) {

@@ -5,6 +5,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost, apiPut, apiDelete } from '$lib/utils/apiClient';
+	import { presentarSaldo } from '$lib/utils/saldo';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -181,6 +182,7 @@
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				{#each tarjetas as tarjeta}
+					{@const saldo = presentarSaldo(tarjeta.saldo_usado)}
 					<div class="bg-linear-to-br rounded-xl shadow-lg p-6 text-white relative transition-all"
 						class:from-gray-700={tarjeta.activa}
 						class:to-gray-900={tarjeta.activa}
@@ -262,8 +264,8 @@
 								</div>
 							{/if}
 							<div>
-								<div class="opacity-75 text-xs mb-1">Saldo Usado</div>
-								<div class="font-semibold">{formatCurrency(parseFloat(tarjeta.saldo_usado))}</div>
+								<div class="opacity-75 text-xs mb-1">{saldo.etiqueta}</div>
+								<div class="font-semibold">{formatCurrency(saldo.monto)}</div>
 							</div>
 							{#if tarjeta.tipo_tarjeta !== 'SERVICIOS' && tarjeta.saldo_disponible !== null}
 								<div>

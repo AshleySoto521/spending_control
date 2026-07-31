@@ -1,11 +1,42 @@
-const CACHE_NAME = 'control-gastos-v1';
+const CACHE_NAME = 'control-gastos-v2';
+
+/**
+ * Solo se precachean recursos públicos.
+ *
+ * Antes la lista incluía '/dashboard'. `cache.addAll()` pide esas rutas con las
+ * cookies del usuario, así que el shell de una página autenticada quedaba
+ * guardado en Cache Storage; en un dispositivo compartido, después de cerrar
+ * sesión, una navegación sin red volvía a servirlo. Los datos financieros
+ * nunca estuvieron ahí (las respuestas de /api jamás se cachean), pero una
+ * página que solo se sirve con sesión no debe quedar en un almacén que
+ * sobrevive al cierre de sesión.
+ */
 const STATIC_ASSETS = [
 	'/',
-	'/dashboard',
 	'/manifest.json',
 	'/icons/android/android-launchericon-192-192.png',
 	'/icons/android/android-launchericon-512-512.png'
 ];
+
+/** Prefijos de rutas que exigen sesión: nunca se guardan ni se sirven de caché. */
+const RUTAS_PRIVADAS = [
+	'/api',
+	'/dashboard',
+	'/egresos',
+	'/ingresos',
+	'/tarjetas',
+	'/pagos-tarjetas',
+	'/proximos-pagos-tarjetas',
+	'/prestamos',
+	'/proyeccion',
+	'/perfil',
+	'/ayuda',
+	'/admin'
+];
+
+function esRutaPrivada(pathname) {
+	return RUTAS_PRIVADAS.some((ruta) => pathname === ruta || pathname.startsWith(`${ruta}/`));
+}
 
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
@@ -37,6 +68,19 @@ self.addEventListener('activate', (event) => {
 	return self.clients.claim();
 });
 
+/**
+ * Vaciado de caché a petición del cliente.
+ * `authStore.logout()` envía este mensaje para que no quede rastro de la
+ * sesión anterior en el dispositivo.
+ */
+self.addEventListener('message', (event) => {
+	if (event.data && event.data.tipo === 'limpiar-cache') {
+		event.waitUntil(
+			caches.keys().then((claves) => Promise.all(claves.map((clave) => caches.delete(clave))))
+		);
+	}
+});
+
 // Estrategia: Network First, fallback a Cache
 self.addEventListener('fetch', (event) => {
 	// Solo cachear GET requests
@@ -44,16 +88,19 @@ self.addEventListener('fetch', (event) => {
 		return;
 	}
 
-	// No cachear requests a /api/
-	if (event.request.url.includes('/api/')) {
+	const url = new URL(event.request.url);
+
+	// Nada de otro origen, y nada que dependa de la sesión.
+	if (url.origin !== self.location.origin || esRutaPrivada(url.pathname)) {
 		return;
 	}
 
 	event.respondWith(
 		fetch(event.request)
 			.then((response) => {
-				// Si la respuesta es válida, clonarla y guardarla en cache
-				if (response && response.status === 200) {
+				// Si la respuesta es válida, clonarla y guardarla en cache.
+				// `basic` descarta respuestas opacas o de terceros.
+				if (response && response.status === 200 && response.type === 'basic') {
 					const responseClone = response.clone();
 					caches.open(CACHE_NAME).then((cache) => {
 						cache.put(event.request, responseClone);

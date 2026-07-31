@@ -44,9 +44,7 @@
 			const response = await fetch(
 				`/api/exportar?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`,
 				{
-					headers: {
-						Authorization: `Bearer ${token}`
-					}
+					headers: {}
 				}
 			);
 

@@ -3,12 +3,20 @@ import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/middleware';
 import { hashPassword } from '$lib/server/auth';
+import { validarPassword } from '$lib/server/passwordPolicy';
+import { esUuid } from '$lib/server/validacion';
 
 // DELETE - Eliminar usuario (solo admin)
 export const DELETE: RequestHandler = async (event) => {
 	try {
 		const adminId = await requireAdmin(event);
 		const { id } = event.params;
+
+		// `id_usuario` es UUID en la base: sin comprobarlo, un valor cualquiera
+		// llega a PostgreSQL y el endpoint responde 500 en lugar de 400.
+		if (!esUuid(id)) {
+			return json({ error: 'Identificador de usuario inválido' }, { status: 400 });
+		}
 
 		// No permitir que el admin se elimine a sí mismo
 		if (adminId === id) {
@@ -46,17 +54,22 @@ export const PATCH: RequestHandler = async (event) => {
 	try {
 		const adminId = await requireAdmin(event);
 		const { id } = event.params;
+
+		// `id_usuario` es UUID en la base: sin comprobarlo, un valor cualquiera
+		// llega a PostgreSQL y el endpoint responde 500 en lugar de 400.
+		if (!esUuid(id)) {
+			return json({ error: 'Identificador de usuario inválido' }, { status: 400 });
+		}
 		const body = await event.request.json();
 
 		// Resetear contraseña
 		if (body.resetPassword) {
 			const nuevaPassword = body.nuevaPassword;
 
-			if (!nuevaPassword || nuevaPassword.length < 8) {
-				return json(
-					{ error: 'La nueva contraseña debe tener al menos 8 caracteres' },
-					{ status: 400 }
-				);
+			const validacion = validarPassword(nuevaPassword);
+
+			if (!validacion.valida) {
+				return json({ error: validacion.error }, { status: 400 });
 			}
 
 			const passwordHash = await hashPassword(nuevaPassword);
@@ -80,6 +93,10 @@ export const PATCH: RequestHandler = async (event) => {
 
 		// Modificar estado activo del usuario
 		if (body.activo !== undefined) {
+			if (typeof body.activo !== 'boolean') {
+				return json({ error: 'El estado activo debe ser booleano' }, { status: 400 });
+			}
+
 			// No permitir desactivar al admin actual
 			if (adminId === id && !body.activo) {
 				return json({ error: 'No puedes desactivarte a ti mismo' }, { status: 400 });

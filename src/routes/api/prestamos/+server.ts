@@ -3,6 +3,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
+import { idEntero } from '$lib/server/validacion';
 
 // GET - Obtener todos los préstamos del usuario con sus saldos calculados
 export const GET: RequestHandler = async (event) => {
@@ -104,7 +105,6 @@ export const PUT: RequestHandler = async (event) => {
 		const data = await event.request.json();
 
 		const {
-			id_prestamo,
 			tipo_prestamo,
 			institucion,
 			monto_original,
@@ -117,8 +117,14 @@ export const PUT: RequestHandler = async (event) => {
 			activo
 		} = data;
 
-		if (!id_prestamo) {
-			return json({ error: 'ID de préstamo requerido' }, { status: 400 });
+		const id_prestamo = idEntero(data.id_prestamo);
+
+		if (id_prestamo === null) {
+			return json({ error: 'ID de préstamo requerido y válido' }, { status: 400 });
+		}
+
+		if (tipo_prestamo && !['PERSONAL', 'AUTOMOTRIZ', 'HIPOTECARIO'].includes(tipo_prestamo)) {
+			return json({ error: 'Tipo de préstamo inválido' }, { status: 400 });
 		}
 
 		// Verificar propiedad
@@ -178,10 +184,10 @@ export const DELETE: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
 		const url = new URL(event.request.url);
-		const id_prestamo = url.searchParams.get('id_prestamo');
+		const id_prestamo = idEntero(url.searchParams.get('id_prestamo'));
 
-		if (!id_prestamo) {
-			return json({ error: 'ID de préstamo requerido' }, { status: 400 });
+		if (id_prestamo === null) {
+			return json({ error: 'ID de préstamo requerido y válido' }, { status: 400 });
 		}
 
 		// Verificar propiedad

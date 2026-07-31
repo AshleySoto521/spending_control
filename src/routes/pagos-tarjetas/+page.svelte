@@ -5,6 +5,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost, apiDelete } from '$lib/utils/apiClient';
+	import { presentarSaldo } from '$lib/utils/saldo';
 
 	let loading = $state(true);
 	let loadingPagos = $state(true);
@@ -275,8 +276,10 @@
 								>
 									<option value="">Selecciona una tarjeta</option>
 									{#each tarjetas as tarjeta}
+										{@const saldo = presentarSaldo(tarjeta.saldo_usado)}
 										<option value={tarjeta.id_tarjeta}>
-											{tarjeta.nom_tarjeta} - {tarjeta.banco || 'Sin banco'} (Deuda: {formatCurrency(parseFloat(tarjeta.saldo_usado))})
+											{tarjeta.nom_tarjeta} - {tarjeta.banco || 'Sin banco'}
+											({saldo.aFavor ? 'A favor' : 'Deuda'}: {formatCurrency(saldo.monto)})
 										</option>
 									{/each}
 								</select>

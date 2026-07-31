@@ -4,15 +4,54 @@ import { query } from '$lib/server/db';
 import { hashPassword, generateToken } from '$lib/server/auth';
 import { cookieConfig, getCookieOptions } from '$lib/server/cookies';
 import { crearSesion, registrarLog } from '$lib/server/security';
+import { validarPassword } from '$lib/server/passwordPolicy';
+import { contarEventosPorIp } from '$lib/server/rateLimit';
+
+/**
+ * Altas por IP y hora, contadas en base de datos.
+ *
+ * La ventana en memoria de `hooks.server.ts` no basta en Vercel: cada instancia
+ * tiene su propio mapa, así que el tope real era «5 × número de instancias» y
+ * se reiniciaba con cada arranque en frío. Este conteo sí es compartido.
+ */
+const MAX_REGISTROS_POR_IP = 5;
+const VENTANA_MINUTOS = 60;
 
 export const POST: RequestHandler = async (event) => {
 	const { request, cookies } = event;
 	try {
-		const { nombre, email, celular, password, aceptoTerminos, aceptoPrivacidad } = await request.json();
+		const registrosRecientes = await contarEventosPorIp(
+			'registro_exitoso',
+			event.getClientAddress(),
+			VENTANA_MINUTOS
+		);
+
+		if (registrosRecientes >= MAX_REGISTROS_POR_IP) {
+			return json(
+				{ error: 'Demasiadas cuentas creadas desde este origen. Inténtalo más tarde.' },
+				{ status: 429, headers: { 'retry-after': String(VENTANA_MINUTOS * 60) } }
+			);
+		}
+
+		const body = await request.json();
+
+		const nombre = typeof body.nombre === 'string' ? body.nombre.trim() : '';
+		const email = typeof body.email === 'string' ? body.email.trim() : '';
+		const celular = typeof body.celular === 'string' ? body.celular.trim() : '';
+		const password = typeof body.password === 'string' ? body.password : '';
+		const { aceptoTerminos, aceptoPrivacidad } = body;
 
 		// Validaciones
 		if (!nombre || !email || !celular || !password) {
 			return json({ error: 'Nombre, email, celular y contraseña son requeridos' }, { status: 400 });
+		}
+
+		if (nombre.length > 100) {
+			return json({ error: 'El nombre es demasiado largo' }, { status: 400 });
+		}
+
+		if (email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+			return json({ error: 'El email no tiene un formato válido' }, { status: 400 });
 		}
 
 		// Validar aceptación de términos y privacidad
@@ -24,15 +63,15 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Debes aceptar el Aviso de Privacidad' }, { status: 400 });
 		}
 
-		if (password.length < 8) {
-			return json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 });
+		const validacion = validarPassword(password, { email, nombre });
+
+		if (!validacion.valida) {
+			return json({ error: validacion.error }, { status: 400 });
 		}
 
 		// Validar celular
-		if (celular) {
-			if (!/^\d{10}$/.test(celular)) {
-				return json({ error: 'El celular debe contener exactamente 10 dígitos' }, { status: 400 });
-			}
+		if (!/^\d{10}$/.test(celular)) {
+			return json({ error: 'El celular debe contener exactamente 10 dígitos' }, { status: 400 });
 		}
 
 		// Verificar si el email ya existe
@@ -59,14 +98,16 @@ export const POST: RequestHandler = async (event) => {
 		// Crear sesión en la base de datos
 		await crearSesion(user.id_usuario, token, event);
 
-		// Registrar log de registro exitoso
-		await registrarLog('login_exitoso', event, {
+		// Registrar log de registro exitoso.
+		// Tipo propio 'registro_exitoso': es lo que cuenta el límite por IP de
+		// arriba, y mezclarlo con 'login_exitoso' falsearía ese contador.
+		await registrarLog('registro_exitoso', event, {
 			idUsuario: user.id_usuario,
 			email: user.email,
 			detalles: 'Usuario registrado exitosamente'
 		});
 
-		// Guardar token en cookie
+		// El token solo viaja en la cookie httpOnly, nunca en el cuerpo.
 		cookies.set(cookieConfig.name, token, getCookieOptions());
 
 		return json(
@@ -77,8 +118,7 @@ export const POST: RequestHandler = async (event) => {
 					nombre: user.nombre,
 					email: user.email,
 					celular: user.celular
-				},
-				token
+				}
 			},
 			{ status: 201 }
 		);

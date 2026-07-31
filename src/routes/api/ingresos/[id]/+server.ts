@@ -2,12 +2,17 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
+import { idEntero } from '$lib/server/validacion';
 
 // PUT - Actualizar ingreso
 export const PUT: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
-		const { id } = event.params;
+		const id = idEntero(event.params.id);
+
+		if (id === null) {
+			return json({ error: 'Identificador inválido' }, { status: 400 });
+		}
 		const data = await event.request.json();
 
 		// Verificar que el ingreso pertenece al usuario
@@ -47,7 +52,11 @@ export const PUT: RequestHandler = async (event) => {
 export const DELETE: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
-		const { id } = event.params;
+		const id = idEntero(event.params.id);
+
+		if (id === null) {
+			return json({ error: 'Identificador inválido' }, { status: 400 });
+		}
 
 		const result = await query(
 			'DELETE FROM ingresos WHERE id_ingreso = $1 AND id_usuario = $2 RETURNING *',

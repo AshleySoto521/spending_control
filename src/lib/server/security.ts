@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { query } from './db';
 import type { RequestEvent } from '@sveltejs/kit';
 
@@ -5,10 +6,33 @@ import type { RequestEvent } from '@sveltejs/kit';
 export type TipoEvento =
 	| 'login_exitoso'
 	| 'login_fallido'
+	| 'login_bloqueado'
 	| 'logout'
 	| 'sesion_expirada'
-	| 'error'
-	| 'sesion_invalidada';
+	| 'sesion_invalidada'
+	| 'password_cambiado'
+	| 'password_restablecido'
+	// Fallo al confirmar la contraseña actual desde el perfil. Es un evento
+	// distinto de 'login_fallido' a propósito: si compartieran tipo, equivocarse
+	// al cambiar la contraseña contaría para el bloqueo de la cuenta y dejaría
+	// al propio usuario fuera de su sesión.
+	| 'password_actual_incorrecta'
+	| 'registro_exitoso'
+	| 'recuperacion_solicitada'
+	| 'limite_excedido'
+	| 'error';
+
+/**
+ * La tabla `sesiones` guarda una huella SHA-256 del token, no el token.
+ *
+ * El JWT es la credencial completa: si se almacenara en claro, cualquier
+ * lectura de esa tabla (un respaldo filtrado, un acceso de solo lectura a la
+ * base, un futuro fallo de inyección) entregaría sesiones activas listas para
+ * usar. Con la huella, leer la tabla no sirve para suplantar a nadie.
+ */
+export function huellaToken(token: string): string {
+	return createHash('sha256').update(token).digest('hex');
+}
 
 // Registrar evento de seguridad en los logs
 export async function registrarLog(
@@ -32,7 +56,7 @@ export async function registrarLog(
 				tipo,
 				data.email || null,
 				ipAddress,
-				userAgent,
+				userAgent?.slice(0, 500),
 				data.detalles || null
 			]
 		);
@@ -61,12 +85,12 @@ export async function crearSesion(
 		[idUsuario]
 	);
 
-	// Crear nueva sesión
+	// Crear nueva sesión (se guarda la huella, nunca el token en claro)
 	const result = await query(
 		`INSERT INTO sesiones (id_usuario, token, ip_address, user_agent, fecha_expiracion)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id_sesion`,
-		[idUsuario, token, ipAddress, userAgent, fechaExpiracion]
+		[idUsuario, huellaToken(token), ipAddress, userAgent?.slice(0, 500), fechaExpiracion]
 	);
 
 	return result.rows[0].id_sesion;
@@ -79,11 +103,13 @@ export async function validarSesion(token: string): Promise<{
 	motivo?: string;
 }> {
 	try {
+		const huella = huellaToken(token);
+
 		const result = await query(
 			`SELECT id_usuario, fecha_expiracion, activa
 			FROM sesiones
 			WHERE token = $1`,
-			[token]
+			[huella]
 		);
 
 		if (result.rows.length === 0) {
@@ -101,10 +127,7 @@ export async function validarSesion(token: string): Promise<{
 
 		if (ahora > expiracion) {
 			// Marcar sesión como inactiva
-			await query(
-				`UPDATE sesiones SET activa = FALSE WHERE token = $1`,
-				[token]
-			);
+			await query(`UPDATE sesiones SET activa = FALSE WHERE token = $1`, [huella]);
 			return { valida: false, motivo: 'Sesión expirada' };
 		}
 
@@ -118,12 +141,24 @@ export async function validarSesion(token: string): Promise<{
 // Cerrar sesión
 export async function cerrarSesion(token: string): Promise<void> {
 	try {
-		await query(
-			`UPDATE sesiones SET activa = FALSE WHERE token = $1`,
-			[token]
-		);
+		await query(`UPDATE sesiones SET activa = FALSE WHERE token = $1`, [huellaToken(token)]);
 	} catch (error) {
 		console.error('Error al cerrar sesión:', error);
+	}
+}
+
+/**
+ * Cierra TODAS las sesiones activas de un usuario.
+ * Se usa al cambiar o restablecer la contraseña: sin esto, quien haya robado
+ * una sesión sigue dentro hasta 4 horas después de que la víctima reaccione.
+ */
+export async function cerrarTodasLasSesiones(idUsuario: string): Promise<void> {
+	try {
+		await query(`UPDATE sesiones SET activa = FALSE WHERE id_usuario = $1 AND activa = TRUE`, [
+			idUsuario
+		]);
+	} catch (error) {
+		console.error('Error al cerrar las sesiones del usuario:', error);
 	}
 }
 

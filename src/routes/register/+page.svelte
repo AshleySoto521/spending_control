@@ -29,8 +29,8 @@
             return;
         }
 
-        if (password.length < 8) {
-            error = 'La contraseña debe tener al menos 8 caracteres';
+        if (password.length < 10) {
+            error = 'La contraseña debe tener al menos 10 caracteres';
             return;
         }
 
@@ -166,7 +166,7 @@
                     class="input-minimal"
                     placeholder="••••••••"
                 />
-                <p class="mt-1 text-sm text-gray-500">Mínimo 8 caracteres</p>
+                <p class="mt-1 text-sm text-gray-500">Mínimo 10 caracteres, con al menos una letra y un número</p>
             </div>
 
             <div>

@@ -915,7 +915,7 @@
 								<p class="text-sm text-purple-800 mb-2">Para actualizar tu contraseña necesitas:</p>
 								<ol class="list-decimal list-inside space-y-1 text-sm text-purple-800 pl-4">
 									<li>Ingresar tu contraseña actual (para verificar tu identidad)</li>
-									<li>Escribir tu nueva contraseña (mínimo 8 caracteres)</li>
+									<li>Escribir tu nueva contraseña (mínimo 10 caracteres, con al menos una letra y un número)</li>
 									<li>Confirmar la nueva contraseña (debe coincidir exactamente)</li>
 									<li>Hacer clic en "Cambiar Contraseña"</li>
 								</ol>
@@ -928,7 +928,7 @@
 							<div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
 								<p class="font-semibold text-blue-900 mb-2">🔐 Consejos de Seguridad</p>
 								<ul class="list-disc list-inside space-y-1 text-blue-800 text-sm">
-									<li>Tu contraseña debe tener al menos 8 caracteres</li>
+									<li>Tu contraseña debe tener al menos 10 caracteres e incluir una letra y un número</li>
 									<li>Usa combinación de letras, números y símbolos para mayor seguridad</li>
 									<li>No compartas tu contraseña con nadie</li>
 									<li>Cambia tu contraseña cada 3-6 meses</li>

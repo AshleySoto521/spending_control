@@ -82,6 +82,11 @@ CREATE TABLE IF NOT EXISTS egresos (
     mes_inicio_pago INTEGER CHECK (mes_inicio_pago >= 0 AND mes_inicio_pago <= 12),
     monto_mensual DECIMAL(12, 2),
     meses_pagados INTEGER DEFAULT 0,
+    -- Pago que generó este egreso automáticamente (NULL si se capturó a mano).
+    -- Las claves foráneas se declaran más abajo, cuando ya existen las tablas
+    -- de pagos. Ver migración 013.
+    id_pago_tarjeta_origen INTEGER,
+    id_pago_prestamo_origen INTEGER,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -130,6 +135,33 @@ CREATE TABLE IF NOT EXISTS pagos_prestamos (
     descripcion TEXT,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Vínculo entre cada egreso automático y el pago que lo originó (migración 013).
+-- Se declara aquí porque `egresos` se crea antes que las tablas de pagos.
+-- El ON DELETE CASCADE hace que borrar un pago retire su egreso.
+ALTER TABLE egresos
+    ADD CONSTRAINT fk_egresos_pago_tarjeta_origen
+    FOREIGN KEY (id_pago_tarjeta_origen)
+    REFERENCES pagos_tarjetas(id_pago) ON DELETE CASCADE;
+
+ALTER TABLE egresos
+    ADD CONSTRAINT fk_egresos_pago_prestamo_origen
+    FOREIGN KEY (id_pago_prestamo_origen)
+    REFERENCES pagos_prestamos(id_pago) ON DELETE CASCADE;
+
+-- Un egreso no puede proceder de un pago de tarjeta y de uno de préstamo a la vez.
+ALTER TABLE egresos
+    ADD CONSTRAINT chk_egresos_un_solo_origen
+    CHECK (id_pago_tarjeta_origen IS NULL OR id_pago_prestamo_origen IS NULL);
+
+-- Un pago genera como mucho un egreso automático.
+CREATE UNIQUE INDEX idx_egresos_pago_tarjeta_origen
+    ON egresos (id_pago_tarjeta_origen)
+    WHERE id_pago_tarjeta_origen IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_egresos_pago_prestamo_origen
+    ON egresos (id_pago_prestamo_origen)
+    WHERE id_pago_prestamo_origen IS NOT NULL;
 
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_usuarios_email ON usuarios(email);

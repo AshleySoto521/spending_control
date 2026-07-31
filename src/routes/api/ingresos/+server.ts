@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
+import { leerPaginacion } from '$lib/server/paginacion';
 import { requireAuth } from '$lib/server/middleware';
 
 // GET - Obtener todos los ingresos del usuario
@@ -8,8 +9,10 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
 		const url = new URL(event.request.url);
-		const limit = parseInt(url.searchParams.get('limit') || '100');
-		const offset = parseInt(url.searchParams.get('offset') || '0');
+		const { limit, offset } = leerPaginacion(url, {
+			limitPorDefecto: 100,
+			limitMaximo: 500
+		});
 
 		const result = await query(
 			`SELECT

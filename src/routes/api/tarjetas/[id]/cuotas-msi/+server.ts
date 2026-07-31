@@ -2,12 +2,17 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
+import { idEntero } from '$lib/server/validacion';
 
 // GET - Obtener cuotas MSI pendientes de una tarjeta específica
 export const GET: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
-		const idTarjeta = event.params.id;
+		const idTarjeta = idEntero(event.params.id);
+
+		if (idTarjeta === null) {
+			return json({ error: 'Identificador inválido' }, { status: 400 });
+		}
 
 		if (!idTarjeta) {
 			return json({ error: 'ID de tarjeta requerido' }, { status: 400 });

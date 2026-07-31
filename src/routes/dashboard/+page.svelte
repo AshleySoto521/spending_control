@@ -6,6 +6,7 @@
 	import WelcomeModal from '$lib/components/WelcomeModal.svelte';
 	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost } from '$lib/utils/apiClient';
+	import { presentarSaldo } from '$lib/utils/saldo';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -166,9 +167,18 @@
 					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="text-sm font-medium text-gray-500">Deuda Tarjetas</p>
-								<p class="text-2xl font-bold text-gray-900 mt-2">
-									{formatCurrency(parseFloat(dashboardData.tarjetas.deuda_total))}
+								<p class="text-sm font-medium text-gray-500">
+									{presentarSaldo(dashboardData.tarjetas.deuda_total).aFavor
+										? 'Saldo a Favor'
+										: 'Deuda Tarjetas'}
+								</p>
+								<p
+									class="text-2xl font-bold mt-2 {presentarSaldo(dashboardData.tarjetas.deuda_total)
+										.aFavor
+										? 'text-green-600'
+										: 'text-gray-900'}"
+								>
+									{formatCurrency(presentarSaldo(dashboardData.tarjetas.deuda_total).monto)}
 								</p>
 								<p class="text-xs text-gray-500 mt-1">
 									{dashboardData.tarjetas.num_tarjetas} tarjeta(s)

@@ -1,14 +1,22 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
+import { requireAuth } from '$lib/server/middleware';
 
-// GET - Obtener todas las formas de pago (catálogo público)
-export const GET: RequestHandler = async () => {
+// GET - Catálogo de formas de pago (requiere sesión)
+export const GET: RequestHandler = async (event) => {
 	try {
-		const result = await query('SELECT * FROM formas_pago ORDER BY id_forma_pago');
+		await requireAuth(event);
+
+		const result = await query(
+			'SELECT id_forma_pago, tipo, descripcion FROM formas_pago ORDER BY id_forma_pago'
+		);
 
 		return json({ formas_pago: result.rows });
-	} catch (error) {
+	} catch (error: any) {
+		if (error?.status === 401) {
+			return error;
+		}
 		console.error('Error al obtener formas de pago:', error);
 		return json({ error: 'Error al obtener formas de pago' }, { status: 500 });
 	}

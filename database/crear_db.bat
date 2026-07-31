@@ -15,3 +15,6 @@ psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control
 psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\005_migrate_pagos_tarjetas_to_egresos.sql
 psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\008_add_cookie_consent.sql
 psql -U postgres -d postgres -f C:\Users\ashley.soto\Documents\Proyectos\Control_gastos\database\migrations\009_fix_saldo_tarjeta_pagos.sql
+psql -U postgres -d postgres -f C:\Users\Ashley\Documents\Proyectos\control_gastos\database\migrations\011_indices_rate_limit.sql
+psql -U postgres -d postgres -f C:\Users\Ashley\Documents\Proyectos\control_gastos\database\migrations\012_seguridad_tokens_y_limites.sql
+psql -U postgres -d postgres -f C:\Users\Ashley\Documents\Proyectos\control_gastos\database\migrations\013_egresos_origen_pago.sql
