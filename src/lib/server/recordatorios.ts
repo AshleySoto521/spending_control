@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { JWT_SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { query } from './db';
 
 /**
@@ -15,24 +16,66 @@ import { query } from './db';
 /** Días sin entrar a partir de los cuales se considera inactiva una cuenta. */
 export const DIAS_INACTIVIDAD = 15;
 
-/** Espera mínima antes de volver a escribir a la misma persona. */
+/** Espera mínima antes de volver a escribir a quien sí usó la aplicación. */
 export const DIAS_ENTRE_AVISOS = 15;
+
+/**
+ * Espera para quien nunca registró nada. Más larga a propósito: esa persona no
+ * ha mostrado ningún interés y escribirle con la misma frecuencia que a un
+ * usuario real es lo que convierte un recordatorio en molestia.
+ */
+export const DIAS_ENTRE_AVISOS_SIN_ACTIVIDAD = 30;
+
+/**
+ * Tope TOTAL de avisos a quien nunca registró nada.
+ *
+ * Si tras dos intentos no ha entrado, no va a entrar. Seguir escribiéndole cada
+ * mes durante años solo sirve para que marque el correo como spam, y esa marca
+ * la paga también el correo de recuperación de contraseña, que sale de la misma
+ * cuenta. Quien sí usó la aplicación no tiene tope: tiene datos dentro que le
+ * importan y el aviso le sirve.
+ */
+export const MAXIMO_AVISOS_SIN_ACTIVIDAD = 2;
 
 /**
  * Tope de correos por ejecución.
  *
- * Es una red de seguridad, no un límite de negocio: si un error de fecha
- * hiciera que todo el padrón resultara «inactivo», esto acota el daño a un
- * puñado de correos en lugar de vaciar la cuota del proveedor SMTP y acabar
- * marcados como spam.
+ * Cumple dos funciones. La primera es de seguridad: si un error de fechas
+ * hiciera que todo el padrón resultara «inactivo», el daño se acota a un
+ * puñado de correos en lugar de vaciar la cuota del proveedor SMTP.
+ *
+ * La segunda es de reputación, y es la que importa al arrancar. Una cuenta que
+ * hasta hoy solo enviaba correos de recuperación —pedidos, esperados y nunca
+ * marcados como spam— y de pronto suelta treinta mensajes casi idénticos a
+ * gente dormida desde hace meses, es el patrón que los filtros castigan. Y el
+ * castigo no recae solo en los recordatorios: la misma cuenta manda los enlaces
+ * de recuperación de contraseña, que sí son críticos.
+ *
+ * Por eso el valor por defecto es bajo y se puede ajustar por variable de
+ * entorno sin volver a desplegar: se empieza despacio y se sube cuando la
+ * primera tanda haya salido sin incidencias.
  */
-export const MAXIMO_POR_EJECUCION = 50;
+function enteroDeEntorno(valor: string | undefined, porDefecto: number): number {
+	const limpio = String(valor ?? '').split('#')[0].trim();
+	const numero = Number.parseInt(limpio, 10);
+	return Number.isSafeInteger(numero) && numero > 0 && numero <= 200 ? numero : porDefecto;
+}
+
+export const MAXIMO_POR_EJECUCION = enteroDeEntorno(env.RECORDATORIOS_MAX_POR_EJECUCION, 8);
+
+/**
+ * A qué público pertenece cada destinatario.
+ *  - `enfriado`: llegó a registrar movimientos y dejó de entrar.
+ *  - `nunca_arranco`: se dio de alta y no creó nada.
+ */
+export type Segmento = 'enfriado' | 'nunca_arranco';
 
 export interface UsuarioInactivo {
 	idUsuario: string;
 	nombre: string;
 	email: string;
 	diasInactivo: number;
+	segmento: Segmento;
 }
 
 /**
@@ -66,46 +109,84 @@ export function tokenDeBajaValido(idUsuario: string, token: unknown): boolean {
  * La última actividad es el `login_exitoso` más reciente, con `fecha_registro`
  * como respaldo: quien se registró y nunca volvió también cuenta como inactivo
  * pasados los días correspondientes.
+ *
+ * El orden empieza por quien lleva MENOS tiempo ausente. Cuando hay una cola
+ * acumulada y un tope por ejecución, ese orden decide a quién se escribe
+ * primero, y conviene que sea a quien más probablemente vuelva: alguien que
+ * falta desde hace tres semanas reconoce la aplicación y puede retomarla; a
+ * quien lleva ocho meses fuera el correo le suena a intrusión y es quien lo
+ * marca como spam. Empezar por los primeros construye reputación de envío antes
+ * de llegar a los segundos.
  */
 export async function usuariosInactivos(
 	diasInactividad = DIAS_INACTIVIDAD,
-	diasEntreAvisos = DIAS_ENTRE_AVISOS,
 	limite = MAXIMO_POR_EJECUCION
 ): Promise<UsuarioInactivo[]> {
 	const resultado = await query(
-		`SELECT
-			u.id_usuario,
-			u.nombre,
-			u.email,
-			EXTRACT(DAY FROM NOW() - GREATEST(
-				u.fecha_registro,
-				COALESCE(ult.ultimo_login, u.fecha_registro)
-			))::int AS dias_inactivo
-		FROM usuarios u
-		LEFT JOIN LATERAL (
-			SELECT MAX(l.fecha_evento) AS ultimo_login
-			FROM logs_seguridad l
-			WHERE l.id_usuario = u.id_usuario
-			  AND l.tipo_evento = 'login_exitoso'
-		) ult ON TRUE
-		WHERE u.activo = TRUE
-		  AND u.recordatorios_activos = TRUE
-		  AND GREATEST(u.fecha_registro, COALESCE(ult.ultimo_login, u.fecha_registro))
-		      < NOW() - make_interval(days => $1::int)
+		`WITH base AS (
+			SELECT
+				u.id_usuario,
+				u.nombre,
+				u.email,
+				u.ultimo_recordatorio,
+				u.recordatorios_enviados,
+				GREATEST(u.fecha_registro, COALESCE(ult.ultimo_login, u.fecha_registro))
+					AS ultima_actividad,
+				-- El segmento se calcula aquí y no se guarda: cualquier fila en
+				-- cualquiera de estas tablas significa que la persona llegó a
+				-- usar la aplicación.
+				(
+					EXISTS (SELECT 1 FROM tarjetas        t  WHERE t.id_usuario  = u.id_usuario) OR
+					EXISTS (SELECT 1 FROM egresos         e  WHERE e.id_usuario  = u.id_usuario) OR
+					EXISTS (SELECT 1 FROM ingresos        i  WHERE i.id_usuario  = u.id_usuario) OR
+					EXISTS (SELECT 1 FROM prestamos       p  WHERE p.id_usuario  = u.id_usuario) OR
+					EXISTS (SELECT 1 FROM pagos_tarjetas  pt WHERE pt.id_usuario = u.id_usuario) OR
+					EXISTS (SELECT 1 FROM pagos_prestamos pp WHERE pp.id_usuario = u.id_usuario)
+				) AS tiene_actividad
+			FROM usuarios u
+			LEFT JOIN LATERAL (
+				SELECT MAX(l.fecha_evento) AS ultimo_login
+				FROM logs_seguridad l
+				WHERE l.id_usuario = u.id_usuario
+				  AND l.tipo_evento = 'login_exitoso'
+			) ult ON TRUE
+			WHERE u.activo = TRUE
+			  AND u.recordatorios_activos = TRUE
+		)
+		SELECT
+			id_usuario,
+			nombre,
+			email,
+			EXTRACT(DAY FROM NOW() - ultima_actividad)::int AS dias_inactivo,
+			tiene_actividad
+		FROM base
+		WHERE ultima_actividad < NOW() - make_interval(days => $1::int)
+		  -- La espera entre avisos depende del público.
 		  AND (
-			u.ultimo_recordatorio IS NULL
-			OR u.ultimo_recordatorio < NOW() - make_interval(days => $2::int)
+			ultimo_recordatorio IS NULL
+			OR ultimo_recordatorio < NOW() - make_interval(
+				days => CASE WHEN tiene_actividad THEN $2::int ELSE $3::int END
+			)
 		  )
-		ORDER BY GREATEST(u.fecha_registro, COALESCE(ult.ultimo_login, u.fecha_registro)) ASC
-		LIMIT $3::int`,
-		[diasInactividad, diasEntreAvisos, limite]
+		  -- Quien nunca arrancó tiene un tope total de avisos.
+		  AND (tiene_actividad OR recordatorios_enviados < $4::int)
+		ORDER BY ultima_actividad DESC
+		LIMIT $5::int`,
+		[
+			diasInactividad,
+			DIAS_ENTRE_AVISOS,
+			DIAS_ENTRE_AVISOS_SIN_ACTIVIDAD,
+			MAXIMO_AVISOS_SIN_ACTIVIDAD,
+			limite
+		]
 	);
 
 	return resultado.rows.map((fila) => ({
 		idUsuario: fila.id_usuario,
 		nombre: fila.nombre,
 		email: fila.email,
-		diasInactivo: fila.dias_inactivo
+		diasInactivo: fila.dias_inactivo,
+		segmento: fila.tiene_actividad ? 'enfriado' : 'nunca_arranco'
 	}));
 }
 
@@ -115,9 +196,13 @@ export async function usuariosInactivos(
  * volvería a intentar hasta el siguiente ciclo.
  */
 export async function registrarRecordatorioEnviado(idUsuario: string): Promise<void> {
-	await query('UPDATE usuarios SET ultimo_recordatorio = NOW() WHERE id_usuario = $1', [
-		idUsuario
-	]);
+	await query(
+		`UPDATE usuarios
+		 SET ultimo_recordatorio = NOW(),
+		     recordatorios_enviados = recordatorios_enviados + 1
+		 WHERE id_usuario = $1`,
+		[idUsuario]
+	);
 }
 
 /** Baja de los recordatorios. Idempotente. */

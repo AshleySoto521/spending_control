@@ -89,6 +89,7 @@ Comprobaba que hubiera sesión, no que fuera administradora. Cualquier usuaria a
    - `database/migrations/014_saldo_tarjeta_por_pago.sql`. Repone el trigger que la migración 009 eliminó sin sustituto: desde entonces, registrar o borrar un pago no actualizaba `tarjetas.saldo_usado`, y el saldo solo se corregía de rebote al tocar alguna compra de esa misma tarjeta. Recalcula además todos los saldos e imprime una línea por cada tarjeta que corrige.
 
    - `database/migrations/015_recordatorios_inactividad.sql`. Prepara los recordatorios por correo a usuarios inactivos: preferencia de baja por usuario y marca del último aviso. No envía nada por sí sola; hace falta además configurar `CRON_SECRET` en las variables de entorno.
+   - `database/migrations/016_recordatorios_por_segmento.sql`. Contador de avisos enviados, necesario para limitar los correos a quien se registró y nunca llegó a usar la aplicación.
 
    **Ejecuta la 014 después de desplegar el código.** El recálculo puede dejar un saldo negativo en las tarjetas que tienen pagos registrados pero ninguna compra —el caso normal de quien da de alta su tarjeta y anota un abono antes de capturar sus gastos—, y la interfaz solo sabe presentarlo como «Saldo a Favor» a partir de esta versión.
 

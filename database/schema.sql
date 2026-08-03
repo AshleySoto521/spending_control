@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     -- Recordatorios por inactividad (migración 015)
     recordatorios_activos BOOLEAN NOT NULL DEFAULT TRUE,
     ultimo_recordatorio TIMESTAMP,
+    recordatorios_enviados INTEGER NOT NULL DEFAULT 0,
     CHECK (celular IS NULL OR LENGTH(celular) = 10)
 );
 

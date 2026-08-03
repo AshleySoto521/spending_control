@@ -7,10 +7,9 @@ import {
 	registrarRecordatorioEnviado,
 	tokenDeBaja,
 	DIAS_INACTIVIDAD,
-	DIAS_ENTRE_AVISOS,
 	MAXIMO_POR_EJECUCION
 } from '$lib/server/recordatorios';
-import { sendRecordatorioEmail } from '$lib/server/email';
+import { sendRecordatorioEmail, sendPrimerosPasosEmail } from '$lib/server/email';
 import { registrarLog } from '$lib/server/security';
 
 function limpiar(valor: string | undefined): string | undefined {
@@ -69,15 +68,13 @@ export const GET: RequestHandler = async (event) => {
 	const appUrl = limpiar(env.APP_URL) ?? 'http://localhost:5173';
 
 	try {
-		const candidatos = await usuariosInactivos(
-			DIAS_INACTIVIDAD,
-			DIAS_ENTRE_AVISOS,
-			MAXIMO_POR_EJECUCION
-		);
+		const candidatos = await usuariosInactivos(DIAS_INACTIVIDAD, MAXIMO_POR_EJECUCION);
 
 		let enviados = 0;
 		let fallidos = 0;
 		let pendientes = 0;
+		let enfriados = 0;
+		let nuncaArrancaron = 0;
 
 		// Presupuesto de tiempo.
 		//
@@ -106,13 +103,22 @@ export const GET: RequestHandler = async (event) => {
 				`?u=${encodeURIComponent(usuario.idUsuario)}` +
 				`&t=${encodeURIComponent(tokenDeBaja(usuario.idUsuario))}`;
 
-			const resultado = await sendRecordatorioEmail(
-				usuario.email,
-				usuario.nombre,
-				usuario.diasInactivo,
-				appUrl,
-				bajaUrl
-			);
+			// Dos públicos, dos mensajes. A quien nunca registró nada no se le
+			// puede decir «hace 80 días que no registras tus gastos»: se le
+			// explica por dónde empezar.
+			const resultado =
+				usuario.segmento === 'enfriado'
+					? await sendRecordatorioEmail(
+							usuario.email,
+							usuario.nombre,
+							usuario.diasInactivo,
+							appUrl,
+							bajaUrl
+						)
+					: await sendPrimerosPasosEmail(usuario.email, usuario.nombre, appUrl, bajaUrl);
+
+			if (usuario.segmento === 'enfriado') enfriados += 1;
+			else nuncaArrancaron += 1;
 
 			if (resultado.success) {
 				// Solo se marca tras un envío correcto: si se marcara siempre, un
@@ -127,7 +133,8 @@ export const GET: RequestHandler = async (event) => {
 		await registrarLog('recordatorio_enviado', event, {
 			detalles:
 				`Recordatorios de inactividad: ${enviados} enviados, ${fallidos} fallidos, ` +
-				`${pendientes} aplazados, ${candidatos.length} candidatos`
+				`${pendientes} aplazados, ${candidatos.length} candidatos ` +
+				`(${enfriados} enfriados, ${nuncaArrancaron} sin arrancar)`
 		});
 
 		return json({
@@ -136,6 +143,7 @@ export const GET: RequestHandler = async (event) => {
 			enviados,
 			fallidos,
 			pendientes,
+			porSegmento: { enfriados, nuncaArrancaron },
 			diasInactividad: DIAS_INACTIVIDAD
 		});
 	} catch (error) {
