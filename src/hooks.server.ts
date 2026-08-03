@@ -55,6 +55,12 @@ const LIMITES: Array<{
 	{ prefijo: '/api/auth/forgot-password', maximo: 5, maximoLectura: 30, ventanaMs: 60 * 60_000 },
 	{ prefijo: '/api/auth/reset-password', maximo: 10, maximoLectura: 30, ventanaMs: 60 * 60_000 },
 	{ prefijo: '/api/user/change-password', maximo: 10, maximoLectura: 30, ventanaMs: 60 * 60_000 },
+	// La baja de recordatorios es pública (el enlace del correo funciona sin
+	// sesión), así que necesita su propio tope contra el sondeo de tokens.
+	{ prefijo: '/api/recordatorios/baja', maximo: 10, maximoLectura: 10, ventanaMs: 60 * 60_000 },
+	// La tarea programada se ejecuta una vez al día; un tope bajo limita el
+	// desgaste de intentar adivinar el secreto.
+	{ prefijo: '/api/cron', maximo: 5, maximoLectura: 5, ventanaMs: 60_000 },
 	{ prefijo: '/api/admin/exportar-usuarios', maximo: 10, maximoLectura: 10, ventanaMs: 60_000 },
 	{ prefijo: '/api/exportar', maximo: 20, maximoLectura: 20, ventanaMs: 60_000 },
 	{ prefijo: '/api', maximo: 300, maximoLectura: 600, ventanaMs: 60_000 }

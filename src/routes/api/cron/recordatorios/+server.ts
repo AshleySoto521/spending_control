@@ -1,0 +1,145 @@
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { timingSafeEqual } from 'node:crypto';
+import { env } from '$env/dynamic/private';
+import {
+	usuariosInactivos,
+	registrarRecordatorioEnviado,
+	tokenDeBaja,
+	DIAS_INACTIVIDAD,
+	DIAS_ENTRE_AVISOS,
+	MAXIMO_POR_EJECUCION
+} from '$lib/server/recordatorios';
+import { sendRecordatorioEmail } from '$lib/server/email';
+import { registrarLog } from '$lib/server/security';
+
+function limpiar(valor: string | undefined): string | undefined {
+	if (valor === undefined || valor === null) return undefined;
+	const limpio = String(valor).split('#')[0].trim();
+	return limpio === '' ? undefined : limpio;
+}
+
+/**
+ * Comparación en tiempo constante del secreto de la tarea programada.
+ *
+ * Este endpoint dispara correos a personas reales: sin protección, cualquiera
+ * podría llamarlo en bucle y convertir la aplicación en una máquina de acosar
+ * a sus propios usuarios, además de agotar la cuota del proveedor SMTP.
+ */
+function secretoValido(recibido: string | null, esperado: string): boolean {
+	if (!recibido) return false;
+
+	const a = Buffer.from(recibido, 'utf8');
+	const b = Buffer.from(esperado, 'utf8');
+
+	if (a.length !== b.length) return false;
+
+	return timingSafeEqual(a, b);
+}
+
+/**
+ * Tarea programada de recordatorios.
+ *
+ * La invoca Vercel Cron una vez al día (ver `vercel.json`), que envía el
+ * encabezado `Authorization: Bearer $CRON_SECRET`. También se puede lanzar a
+ * mano con curl usando el mismo secreto.
+ *
+ * Es GET porque es lo que envía Vercel Cron. No modifica nada que dependa de la
+ * petición: quién recibe correo lo decide el estado de la base.
+ */
+export const GET: RequestHandler = async (event) => {
+	const secreto = limpiar(env.CRON_SECRET);
+
+	// Falla en cerrado: sin secreto configurado, el endpoint no funciona. Lo
+	// contrario dejaría abierto el disparador de correos en cuanto alguien
+	// olvidara la variable de entorno.
+	if (!secreto) {
+		console.error('[cron] CRON_SECRET no está configurado; no se envían recordatorios.');
+		return json({ error: 'Tarea no configurada' }, { status: 503 });
+	}
+
+	const cabecera = event.request.headers.get('authorization');
+	const recibido = cabecera?.startsWith('Bearer ') ? cabecera.slice(7) : null;
+
+	if (!secretoValido(recibido, secreto)) {
+		// Respuesta genérica: no se confirma si el endpoint existe ni por qué falló.
+		return json({ error: 'No autorizado' }, { status: 401 });
+	}
+
+	const appUrl = limpiar(env.APP_URL) ?? 'http://localhost:5173';
+
+	try {
+		const candidatos = await usuariosInactivos(
+			DIAS_INACTIVIDAD,
+			DIAS_ENTRE_AVISOS,
+			MAXIMO_POR_EJECUCION
+		);
+
+		let enviados = 0;
+		let fallidos = 0;
+		let pendientes = 0;
+
+		// Presupuesto de tiempo.
+		//
+		// Cada envío por SMTP abre su propia conexión con Gmail y tarda entre uno
+		// y dos segundos. Con la lista llena eso supera el tiempo máximo de una
+		// función serverless y Vercel la corta a media ejecución. Parar por las
+		// buenas antes de llegar ahí deja el trabajo restante para el día
+		// siguiente —solo se marca a quien sí recibió el correo— en lugar de
+		// morir sin registrar nada.
+		const inicio = Date.now();
+		const PRESUPUESTO_MS = 25_000;
+
+		// En serie, no en paralelo: son pocos destinatarios y los proveedores SMTP
+		// penalizan las ráfagas de conexiones simultáneas.
+		for (const usuario of candidatos) {
+			if (Date.now() - inicio > PRESUPUESTO_MS) {
+				pendientes = candidatos.length - enviados - fallidos;
+				console.warn(
+					`[cron] Presupuesto de tiempo agotado; ${pendientes} recordatorios quedan para la próxima ejecución.`
+				);
+				break;
+			}
+
+			const bajaUrl =
+				`${appUrl}/baja-recordatorios` +
+				`?u=${encodeURIComponent(usuario.idUsuario)}` +
+				`&t=${encodeURIComponent(tokenDeBaja(usuario.idUsuario))}`;
+
+			const resultado = await sendRecordatorioEmail(
+				usuario.email,
+				usuario.nombre,
+				usuario.diasInactivo,
+				appUrl,
+				bajaUrl
+			);
+
+			if (resultado.success) {
+				// Solo se marca tras un envío correcto: si se marcara siempre, un
+				// fallo del proveedor haría perder el aviso hasta el siguiente ciclo.
+				await registrarRecordatorioEnviado(usuario.idUsuario);
+				enviados += 1;
+			} else {
+				fallidos += 1;
+			}
+		}
+
+		await registrarLog('recordatorio_enviado', event, {
+			detalles:
+				`Recordatorios de inactividad: ${enviados} enviados, ${fallidos} fallidos, ` +
+				`${pendientes} aplazados, ${candidatos.length} candidatos`
+		});
+
+		return json({
+			success: true,
+			candidatos: candidatos.length,
+			enviados,
+			fallidos,
+			pendientes,
+			diasInactividad: DIAS_INACTIVIDAD
+		});
+	} catch (error) {
+		console.error('[cron] Error al enviar recordatorios:', error);
+		return json({ error: 'Error al procesar los recordatorios' }, { status: 500 });
+	}
+};

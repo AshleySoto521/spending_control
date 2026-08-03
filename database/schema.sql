@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
     token_expiracion TIMESTAMP,
     acepto_terminos BOOLEAN DEFAULT FALSE NOT NULL,
     acepto_privacidad BOOLEAN DEFAULT FALSE NOT NULL,
+    -- Recordatorios por inactividad (migración 015)
+    recordatorios_activos BOOLEAN NOT NULL DEFAULT TRUE,
+    ultimo_recordatorio TIMESTAMP,
     CHECK (celular IS NULL OR LENGTH(celular) = 10)
 );
 
@@ -162,6 +165,11 @@ CREATE UNIQUE INDEX idx_egresos_pago_tarjeta_origen
 CREATE UNIQUE INDEX idx_egresos_pago_prestamo_origen
     ON egresos (id_pago_prestamo_origen)
     WHERE id_pago_prestamo_origen IS NOT NULL;
+
+-- Selección de destinatarios de los recordatorios (migración 015)
+CREATE INDEX idx_usuarios_recordatorios
+    ON usuarios (recordatorios_activos, ultimo_recordatorio)
+    WHERE activo = TRUE;
 
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_usuarios_email ON usuarios(email);

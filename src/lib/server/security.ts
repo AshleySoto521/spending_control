@@ -19,6 +19,8 @@ export type TipoEvento =
 	| 'password_actual_incorrecta'
 	| 'registro_exitoso'
 	| 'recuperacion_solicitada'
+	| 'recordatorio_enviado'
+	| 'recordatorio_baja'
 	| 'limite_excedido'
 	| 'error';
 

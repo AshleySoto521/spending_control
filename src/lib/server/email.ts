@@ -277,6 +277,145 @@ export async function sendResetPasswordEmail(
 	}
 }
 
+/**
+ * Plantilla del recordatorio de inactividad.
+ *
+ * Deliberadamente sin cifras: ni saldos, ni deudas, ni movimientos. El correo
+ * es un canal que la aplicación no controla —se reenvía, se lee en bandejas
+ * compartidas, se queda en cuentas que alguien puede comprometer— y un aviso
+ * de «vuelve a registrar tus gastos» no necesita exponer la situación
+ * financiera de nadie para cumplir su función.
+ */
+function getRecordatorioTemplate(
+	nombreSinEscapar: string,
+	dias: number,
+	appUrl: string,
+	bajaUrl: string
+): string {
+	const nombre = escaparHtml(nombreSinEscapar);
+
+	return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Te extrañamos en Control de Gastos</title>
+	<style>
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+			line-height: 1.6;
+			color: #333;
+			max-width: 600px;
+			margin: 0 auto;
+			padding: 20px;
+			background-color: #f5f5f5;
+		}
+		.container {
+			background-color: #ffffff;
+			border-radius: 8px;
+			padding: 40px;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		}
+		.header { text-align: center; margin-bottom: 30px; }
+		h1 { color: #1f2937; font-size: 24px; margin-bottom: 10px; }
+		.content { margin-bottom: 30px; }
+		.button {
+			display: inline-block;
+			padding: 12px 30px;
+			background-color: #1f2937;
+			color: #ffffff !important;
+			text-decoration: none;
+			border-radius: 6px;
+			font-weight: 600;
+			text-align: center;
+			margin: 20px 0;
+		}
+		.footer {
+			margin-top: 30px;
+			padding-top: 20px;
+			border-top: 1px solid #e5e7eb;
+			text-align: center;
+			color: #6b7280;
+			font-size: 13px;
+		}
+		.footer a { color: #6b7280; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="header">
+			<h1>Hace ${dias} días que no nos vemos</h1>
+		</div>
+
+		<div class="content">
+			<p>Hola <strong>${nombre}</strong>,</p>
+			<p>
+				Han pasado ${dias} días desde la última vez que entraste a
+				<strong>Control de Gastos</strong>. Si dejaste movimientos sin registrar,
+				ponerte al día toma unos minutos y evita que se te pase una fecha de pago.
+			</p>
+
+			<div style="text-align: center;">
+				<a href="${appUrl}/dashboard" class="button">Entrar a mi cuenta</a>
+			</div>
+
+			<p style="margin-top: 20px;">
+				Si ya no piensas usar la aplicación, no hace falta que hagas nada: este es
+				un recordatorio ocasional, no una suscripción.
+			</p>
+		</div>
+
+		<div class="footer">
+			<p>
+				¿Prefieres no recibir estos recordatorios?
+				<a href="${bajaUrl}">Dar de baja los avisos</a>.
+			</p>
+			<p>Seguirás recibiendo los correos necesarios para tu cuenta, como la recuperación de contraseña.</p>
+			<p>&copy; ${new Date().getFullYear()} Control de Gastos. Todos los derechos reservados.</p>
+		</div>
+	</div>
+</body>
+</html>
+	`.trim();
+}
+
+/** Envía el recordatorio de inactividad. */
+export async function sendRecordatorioEmail(
+	email: string,
+	nombre: string,
+	dias: number,
+	appUrl: string,
+	bajaUrl: string
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+	try {
+		if (!EMAIL_USER || !EMAIL_PASS) {
+			console.error('❌ Configuración de email incompleta: no se envían recordatorios.');
+			return { success: false, error: 'Configuración de email no disponible' };
+		}
+
+		const info = await getTransporter().sendMail({
+			from: `"Control de Gastos" <${EMAIL_FROM || EMAIL_USER}>`,
+			to: email,
+			subject: `${nombre}, hace ${dias} días que no registras tus gastos`,
+			html: getRecordatorioTemplate(nombre, dias, appUrl, bajaUrl),
+			headers: {
+				// Permite a Gmail y Outlook mostrar su propio botón de baja.
+				// Sin esto, quien no quiera los correos usa el botón de spam, y eso
+				// daña la reputación del remitente para TODOS los envíos, incluidos
+				// los de recuperación de contraseña.
+				'List-Unsubscribe': `<${bajaUrl}>`
+			}
+		});
+
+		return { success: true, messageId: info.messageId };
+	} catch (error: any) {
+		// Sin el destinatario: en producción los logs persisten.
+		console.error('❌ Error al enviar recordatorio:', error?.message ?? error);
+		return { success: false, error: error?.message || 'Error al enviar recordatorio' };
+	}
+}
+
 // Función de prueba para verificar conexión SMTP
 export async function testEmailConnection(): Promise<boolean> {
 	try {
