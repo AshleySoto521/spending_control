@@ -203,8 +203,30 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
+		// ¿Qué tan al día van los registros?
+		//
+		// Se mide contra la fecha del movimiento más reciente, no contra la
+		// fecha en que se capturó. Alguien puede sentarse hoy a meter gastos de
+		// junio y seguir teniendo tres semanas sin cubrir; lo que importa es
+		// hasta dónde llega su historial, no cuándo tecleó por última vez.
+		const alDia = await query(
+			`SELECT
+				MAX(fecha)::date AS ultima_fecha,
+				(CURRENT_DATE - MAX(fecha))::int AS dias
+			FROM (
+				SELECT fecha_egreso AS fecha FROM egresos WHERE id_usuario = $1
+				UNION ALL
+				SELECT fecha_ingreso FROM ingresos WHERE id_usuario = $1
+			) m`,
+			[userId]
+		);
+
 		return json({
 			resumen: resumenFinanciero,
+			al_dia: {
+				ultima_fecha: alDia.rows[0]?.ultima_fecha ?? null,
+				dias: alDia.rows[0]?.dias ?? null
+			},
 			tarjetas: deudaTarjetas.rows[0] || {
 				num_tarjetas: 0,
 				deuda_total: 0,

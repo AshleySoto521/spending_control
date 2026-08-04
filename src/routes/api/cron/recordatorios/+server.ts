@@ -11,6 +11,7 @@ import {
 } from '$lib/server/recordatorios';
 import { sendRecordatorioEmail, sendPrimerosPasosEmail } from '$lib/server/email';
 import { limpiarLogsSeguridad } from '$lib/server/mantenimiento';
+import { generarNotificaciones } from '$lib/server/notificaciones';
 import { registrarLog } from '$lib/server/security';
 
 function limpiar(valor: string | undefined): string | undefined {
@@ -83,6 +84,16 @@ export const GET: RequestHandler = async (event) => {
 			console.log(
 				`[cron] Retención de logs: ${limpieza.eliminados} eventos eliminados, ${limpieza.restantes} restantes.`
 			);
+		}
+
+		// Avisos dentro de la aplicación: cortes y vencimientos próximos.
+		//
+		// No generan ningún correo. Son idempotentes por la clave única de cada
+		// aviso, así que repetir la ejecución no duplica nada.
+		const avisosNuevos = await generarNotificaciones();
+
+		if (avisosNuevos > 0) {
+			console.log(`[cron] Notificaciones generadas: ${avisosNuevos}`);
 		}
 
 		const candidatos = await usuariosInactivos(DIAS_INACTIVIDAD, MAXIMO_POR_EJECUCION);
@@ -162,6 +173,7 @@ export const GET: RequestHandler = async (event) => {
 			pendientes,
 			porSegmento: { enfriados, nuncaArrancaron },
 			diasInactividad: DIAS_INACTIVIDAD,
+			notificacionesGeneradas: avisosNuevos,
 			mantenimiento: limpieza
 		});
 	} catch (error) {

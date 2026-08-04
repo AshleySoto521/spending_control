@@ -7,6 +7,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost } from '$lib/utils/apiClient';
 	import { presentarSaldo } from '$lib/utils/saldo';
+	import { estadoAlDia } from '$lib/utils/alDia';
 
 	let loading = $state(true);
 	let error = $state('');
@@ -180,6 +181,45 @@
 					</p>
 				</div>
 			{:else if dashboardData}
+				<!--
+					Franja de «qué tan al día vas».
+					Discreta cuando no hay hueco; visible cuando sí lo hay. Complementa
+					los recordatorios por correo, que miden el último acceso: aquí se
+					mide el último movimiento, y se puede entrar a diario sin registrar
+					nada.
+				-->
+				{@const alDia = estadoAlDia(dashboardData.al_dia?.dias)}
+				<div
+					class="flex items-start gap-3 rounded-xl border p-4 mb-6"
+					class:bg-green-50={alDia.nivel === 'al_dia'}
+					class:border-green-200={alDia.nivel === 'al_dia'}
+					class:bg-gray-50={alDia.nivel === 'reciente' || alDia.nivel === 'sin_datos'}
+					class:border-gray-200={alDia.nivel === 'reciente' || alDia.nivel === 'sin_datos'}
+					class:bg-amber-50={alDia.nivel === 'atrasado'}
+					class:border-amber-200={alDia.nivel === 'atrasado'}
+					class:bg-red-50={alDia.nivel === 'muy_atrasado'}
+					class:border-red-200={alDia.nivel === 'muy_atrasado'}
+				>
+					<div class="flex-1 min-w-0">
+						<p class="font-semibold text-gray-900">{alDia.titulo}</p>
+						<p class="text-sm text-gray-600 mt-0.5">{alDia.detalle}</p>
+						{#if dashboardData.al_dia?.ultima_fecha}
+							<p class="text-xs text-gray-500 mt-1">
+								Último movimiento: {formatDate(dashboardData.al_dia.ultima_fecha)}
+							</p>
+						{/if}
+					</div>
+
+					{#if alDia.nivel !== 'al_dia'}
+						<a
+							href="/egresos"
+							class="shrink-0 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800"
+						>
+							Registrar
+						</a>
+					{/if}
+				</div>
+
 				<!-- Tarjetas de resumen -->
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

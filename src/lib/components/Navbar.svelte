@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/stores/auth';
 	import { page } from '$app/stores';
+	import Notificaciones from '$lib/components/Notificaciones.svelte';
 	
 	// Estado para el menú móvil
 	let mobileMenuOpen = $state(false);
@@ -135,6 +136,8 @@
 
 			<div class="flex items-center gap-4">
 				<div class="hidden md:flex items-center gap-4">
+					<Notificaciones />
+
 					<div class="relative dropdown-container">
 						<button
 							onclick={(e) => { e.stopPropagation(); activeDropdown = activeDropdown === 'usuario' ? '' : 'usuario'; }}
@@ -162,7 +165,10 @@
 					</div>
 				</div>
 
-				<div class="flex items-center md:hidden">
+				<div class="flex items-center gap-1 md:hidden">
+					<!-- La campanita también en móvil: la app se usa sobre todo ahí. -->
+					<Notificaciones />
+
 					<button
 						onclick={() => mobileMenuOpen = !mobileMenuOpen}
 						class="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"

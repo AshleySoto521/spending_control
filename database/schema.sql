@@ -180,6 +180,23 @@ CREATE INDEX idx_usuarios_recordatorios
     ON usuarios (recordatorios_activos, ultimo_recordatorio)
     WHERE activo = TRUE;
 
+-- Centro de notificaciones dentro de la aplicación (migración 020)
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id_notificacion SERIAL PRIMARY KEY,
+    id_usuario UUID NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    tipo VARCHAR(40) NOT NULL,
+    titulo VARCHAR(200) NOT NULL,
+    cuerpo TEXT,
+    enlace VARCHAR(200),
+    -- Identidad del aviso, para no repetirlo. Ej.: 'corte:13:2026-08'
+    clave VARCHAR(120) NOT NULL,
+    leida BOOLEAN NOT NULL DEFAULT FALSE,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_notificaciones_clave ON notificaciones (id_usuario, clave);
+CREATE INDEX idx_notificaciones_usuario ON notificaciones (id_usuario, leida, fecha_creacion DESC);
+
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_usuarios_email ON usuarios(email);
 CREATE INDEX idx_tarjetas_usuario ON tarjetas(id_usuario);
