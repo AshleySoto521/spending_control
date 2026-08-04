@@ -11,6 +11,20 @@
 	let loading = $state(true);
 	let error = $state('');
 	let dashboardData: any = $state(null);
+
+	/**
+	 * Cuenta recién creada: sin tarjetas y sin un solo movimiento.
+	 *
+	 * Basta con que exista cualquiera de las tres cosas para volver al panel
+	 * normal; quien ya empezó no debería volver a ver la pantalla de bienvenida
+	 * solo porque un mes le saliera en cero.
+	 */
+	const estaVacio = $derived(
+		dashboardData !== null &&
+			Number(dashboardData.tarjetas?.num_tarjetas ?? 0) === 0 &&
+			Number(dashboardData.resumen?.total_ingresos ?? 0) === 0 &&
+			Number(dashboardData.resumen?.total_egresos ?? 0) === 0
+	);
 	let showWelcomeModal = $state(false);
 
 	async function loadDashboard() {
@@ -112,6 +126,58 @@
 			{:else if error}
 				<div class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg">
 					{error}
+				</div>
+			{:else if dashboardData && estaVacio}
+				<!--
+					Primera visita: un panel lleno de ceros no dice qué hacer, y de 32
+					personas registradas 24 no llegaron a crear nada. Aquí se sustituye
+					por el primer paso concreto.
+				-->
+				<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:p-12 text-center max-w-2xl mx-auto">
+					<h2 class="text-2xl font-bold text-gray-900 mb-3">Empecemos por lo primero</h2>
+					<p class="text-gray-600 mb-8">
+						Todavía no tienes nada registrado. Da de alta una tarjeta y en un minuto
+						empiezas a ver a dónde se te va el dinero.
+					</p>
+
+					<ol class="text-left space-y-4 mb-8">
+						<li class="flex gap-3">
+							<span class="shrink-0 w-7 h-7 rounded-full bg-gray-900 text-white text-sm font-bold flex items-center justify-center">1</span>
+							<div>
+								<p class="font-semibold text-gray-900">Da de alta una tarjeta</p>
+								<p class="text-sm text-gray-600">
+									Solo su nombre y el tipo. Nunca pedimos el número completo.
+								</p>
+							</div>
+						</li>
+						<li class="flex gap-3">
+							<span class="shrink-0 w-7 h-7 rounded-full bg-gray-200 text-gray-700 text-sm font-bold flex items-center justify-center">2</span>
+							<div>
+								<p class="font-semibold text-gray-900">Anota un gasto</p>
+								<p class="text-sm text-gray-600">Aunque sea el café de esta mañana.</p>
+							</div>
+						</li>
+						<li class="flex gap-3">
+							<span class="shrink-0 w-7 h-7 rounded-full bg-gray-200 text-gray-700 text-sm font-bold flex items-center justify-center">3</span>
+							<div>
+								<p class="font-semibold text-gray-900">Mira tu proyección</p>
+								<p class="text-sm text-gray-600">
+									Cuánto te queda antes de tu próxima fecha de pago.
+								</p>
+							</div>
+						</li>
+					</ol>
+
+					<a
+						href="/tarjetas"
+						class="inline-block bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800"
+					>
+						Dar de alta mi primera tarjeta
+					</a>
+
+					<p class="mt-4 text-sm text-gray-500">
+						¿Prefieres empezar por un gasto? <a href="/egresos" class="underline">Regístralo aquí</a>.
+					</p>
 				</div>
 			{:else if dashboardData}
 				<!-- Tarjetas de resumen -->

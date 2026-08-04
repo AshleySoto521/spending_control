@@ -152,6 +152,10 @@ export async function usuariosInactivos(
 			) ult ON TRUE
 			WHERE u.activo = TRUE
 			  AND u.recordatorios_activos = TRUE
+			  -- Solo direcciones confirmadas. Es donde el daño sería hacia un
+			  -- tercero: si alguien se registró con el correo de otra persona,
+			  -- esa persona no tiene por qué recibir nuestros recordatorios.
+			  AND u.email_verificado = TRUE
 		)
 		SELECT
 			id_usuario,

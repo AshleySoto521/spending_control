@@ -42,7 +42,11 @@ const dominioConfigurado = limpiar(env.COOKIE_DOMAIN);
 
 export const cookieConfig = {
 	name: limpiar(env.COOKIE_NAME) || 'auth_token',
-	maxAge: entero(env.COOKIE_MAX_AGE, 4 * 60 * 60 * 1000), // 4 h, igual que el JWT
+	// 30 días: es el tope absoluto de la sesión, no su duración efectiva. La
+	// sesión real caduca por inactividad (4 h) según la fila de `sesiones`, que
+	// se renueva con el uso. Si la cookie muriera a las 4 h, el navegador la
+	// descartaría antes de que esa renovación pudiera llegar a aplicarse.
+	maxAge: entero(env.COOKIE_MAX_AGE, 30 * 24 * 60 * 60 * 1000),
 	httpOnly,
 	secure,
 	sameSite,

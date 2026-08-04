@@ -2,8 +2,21 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { verifyToken } from '$lib/server/auth';
 import { json } from '@sveltejs/kit';
 import { cookieConfig } from '$lib/server/cookies';
-import { validarSesion, registrarLog } from '$lib/server/security';
+import { validarSesion, renovarSesion, registrarLog } from '$lib/server/security';
+import { getCookieOptions } from '$lib/server/cookies';
 import { query } from '$lib/server/db';
+
+/**
+ * Empuja la caducidad de la sesión y refresca la cookie.
+ *
+ * Se llama solo cuando a la sesión le queda poco, así que supone una escritura
+ * por hora de uso continuo, no una por petición. Sin esto, quien abre la
+ * aplicación dos veces por semana tendría que escribir su contraseña cada vez.
+ */
+export async function refrescarSesion(event: RequestEvent, token: string): Promise<void> {
+	await renovarSesion(token);
+	event.cookies.set(cookieConfig.name, token, getCookieOptions());
+}
 
 /**
  * Obtiene el token de sesión de la petición.
@@ -65,6 +78,10 @@ export async function requireAuth(event: RequestEvent) {
 			{ error: 'Sesión expirada o inválida', motivo: sesionValida.motivo },
 			{ status: 401 }
 		);
+	}
+
+	if (sesionValida.necesitaRenovacion) {
+		await refrescarSesion(event, token);
 	}
 
 	return payload.userId;

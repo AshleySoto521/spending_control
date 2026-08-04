@@ -6,6 +6,10 @@ import { cookieConfig, getCookieOptions } from '$lib/server/cookies';
 import { crearSesion, registrarLog } from '$lib/server/security';
 import { validarPassword } from '$lib/server/passwordPolicy';
 import { contarEventosPorIp } from '$lib/server/rateLimit';
+import { textoLimpio } from '$lib/server/validacion';
+import { generarTokenVerificacion } from '$lib/server/verificacion';
+import { sendVerificacionEmail } from '$lib/server/email';
+import { env } from '$env/dynamic/private';
 
 /**
  * Altas por IP y hora, contadas en base de datos.
@@ -35,7 +39,10 @@ export const POST: RequestHandler = async (event) => {
 
 		const body = await request.json();
 
-		const nombre = typeof body.nombre === 'string' ? body.nombre.trim() : '';
+		// `textoLimpio` en vez de `.trim()`: también colapsa los espacios
+		// interiores repetidos, que es de donde salen nombres como
+		// «Aránzazu  del Rayo».
+		const nombre = textoLimpio(body.nombre, 100) ?? '';
 		const email = typeof body.email === 'string' ? body.email.trim() : '';
 		const celular = typeof body.celular === 'string' ? body.celular.trim() : '';
 		const password = typeof body.password === 'string' ? body.password : '';
@@ -106,6 +113,25 @@ export const POST: RequestHandler = async (event) => {
 			email: user.email,
 			detalles: 'Usuario registrado exitosamente'
 		});
+
+		// Verificación de correo: no bloquea el acceso, solo confirma que la
+		// dirección es suya. Sin esto, quien se equivoca al teclear su correo se
+		// queda sin recuperación de contraseña para siempre.
+		//
+		// Un fallo al enviar no debe tumbar el registro: la cuenta ya existe y se
+		// puede reenviar la confirmación desde el perfil.
+		try {
+			const tokenVerificacion = await generarTokenVerificacion(user.id_usuario);
+			const appUrl = String(env.APP_URL ?? '').split('#')[0].trim() || 'http://localhost:5173';
+
+			await sendVerificacionEmail(
+				user.email,
+				user.nombre,
+				`${appUrl}/verificar-email?t=${encodeURIComponent(tokenVerificacion)}`
+			);
+		} catch (errorVerificacion) {
+			console.error('No se pudo enviar la verificación de correo:', errorVerificacion);
+		}
 
 		// El token solo viaja en la cookie httpOnly, nunca en el cuerpo.
 		cookies.set(cookieConfig.name, token, getCookieOptions());

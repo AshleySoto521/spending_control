@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 import { cookieConfig } from '$lib/server/cookies';
 import { verifyToken } from '$lib/server/auth';
 import { validarSesion } from '$lib/server/security';
+import { refrescarSesion } from '$lib/server/middleware';
 import { consumir } from '$lib/server/rateLimit';
 import { query } from '$lib/server/db';
 
@@ -55,6 +56,12 @@ const LIMITES: Array<{
 	{ prefijo: '/api/auth/forgot-password', maximo: 5, maximoLectura: 30, ventanaMs: 60 * 60_000 },
 	{ prefijo: '/api/auth/reset-password', maximo: 10, maximoLectura: 30, ventanaMs: 60 * 60_000 },
 	{ prefijo: '/api/user/change-password', maximo: 10, maximoLectura: 30, ventanaMs: 60 * 60_000 },
+	// Reenvío de verificación: sin tope, una sesión abierta bastaría para
+	// generar correos a voluntad hacia la dirección registrada.
+	{ prefijo: '/api/user/verificacion', maximo: 3, maximoLectura: 60, ventanaMs: 60 * 60_000 },
+	// Borrado de cuenta: acota los intentos de adivinar la contraseña.
+	{ prefijo: '/api/user/eliminar', maximo: 5, maximoLectura: 5, ventanaMs: 60 * 60_000 },
+	{ prefijo: '/api/auth/verificar-email', maximo: 10, maximoLectura: 10, ventanaMs: 60 * 60_000 },
 	// La baja de recordatorios es pública (el enlace del correo funciona sin
 	// sesión), así que necesita su propio tope contra el sondeo de tokens.
 	{ prefijo: '/api/recordatorios/baja', maximo: 10, maximoLectura: 10, ventanaMs: 60 * 60_000 },
@@ -94,6 +101,13 @@ async function usuarioDeLaSesion(
 
 	const sesion = await validarSesion(token);
 	if (!sesion.valida || sesion.idUsuario !== payload.userId) return null;
+
+	// La carga de una página también cuenta como actividad: sin esto, quien
+	// navega por la aplicación sin que se dispare ninguna llamada a la API
+	// perdería la sesión igualmente.
+	if (sesion.necesitaRenovacion) {
+		await refrescarSesion(event, token);
+	}
 
 	return payload.userId;
 }

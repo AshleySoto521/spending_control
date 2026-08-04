@@ -562,6 +562,62 @@ export async function sendPrimerosPasosEmail(
 	}
 }
 
+/** Envía el correo de confirmación de dirección. */
+export async function sendVerificacionEmail(
+	email: string,
+	nombre: string,
+	enlace: string
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+	try {
+		if (!EMAIL_USER || !EMAIL_PASS) {
+			console.error('❌ Configuración de email incompleta: no se envía la verificación.');
+			return { success: false, error: 'Configuración de email no disponible' };
+		}
+
+		const info = await getTransporter().sendMail({
+			from: `"Control de Gastos" <${EMAIL_FROM || EMAIL_USER}>`,
+			to: email,
+			subject: 'Confirma tu correo · Control de Gastos',
+			html: `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height:1.6; color:#333; max-width:600px; margin:0 auto; padding:20px; background-color:#f5f5f5;">
+	<div style="background:#fff; border-radius:8px; padding:40px; box-shadow:0 2px 4px rgba(0,0,0,.1);">
+		<h1 style="color:#1f2937; font-size:24px; text-align:center;">Confirma tu correo</h1>
+		<p>Hola <strong>${escaparHtml(nombre)}</strong>,</p>
+		<p>
+			Confirma que esta dirección es tuya. Es lo que nos permitirá devolverte el acceso
+			si alguna vez olvidas tu contraseña.
+		</p>
+		<div style="text-align:center;">
+			<a href="${enlace}" style="display:inline-block; padding:12px 30px; background:#1f2937; color:#fff !important; text-decoration:none; border-radius:6px; font-weight:600; margin:20px 0;">
+				Confirmar mi correo
+			</a>
+		</div>
+		<p>O copia y pega este enlace en tu navegador:</p>
+		<div style="color:#6b7280; font-size:14px; word-break:break-all; padding:15px; background:#f9fafb; border-radius:4px; border:1px solid #e5e7eb;">
+			${enlace}
+		</div>
+		<p style="margin-top:20px;">
+			El enlace caduca en 48 horas. Mientras tanto puedes usar la aplicación con normalidad.
+		</p>
+		<p style="color:#6b7280; font-size:13px; margin-top:30px; padding-top:20px; border-top:1px solid #e5e7eb;">
+			Si no creaste ninguna cuenta en Control de Gastos, ignora este mensaje: sin
+			confirmar, esa cuenta no podrá enviarte ningún otro correo.
+		</p>
+	</div>
+</body>
+</html>`.trim()
+		});
+
+		return { success: true, messageId: info.messageId };
+	} catch (error: any) {
+		console.error('❌ Error al enviar la verificación:', error?.message ?? error);
+		return { success: false, error: error?.message || 'Error al enviar el correo' };
+	}
+}
+
 // Función de prueba para verificar conexión SMTP
 export async function testEmailConnection(): Promise<boolean> {
 	try {

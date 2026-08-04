@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
+import { validarUltimosDigitos, textoLimpio } from '$lib/server/validacion';
 
 // GET - Obtener todas las tarjetas del usuario
 export const GET: RequestHandler = async (event) => {
@@ -49,9 +50,15 @@ export const POST: RequestHandler = async (event) => {
 		const { num_tarjeta, nom_tarjeta, tipo_tarjeta, clabe, banco, linea_credito, dia_corte, dias_gracia } =
 			await event.request.json();
 
-		// Validaciones
-		if (!num_tarjeta || !nom_tarjeta || !tipo_tarjeta) {
-			return json({ error: 'Número, nombre y tipo de tarjeta son requeridos' }, { status: 400 });
+		// Se normalizan antes de validar: así «BBVA » y «BBVA» dejan de ser dos
+		// instituciones distintas en la base.
+		const nombreLimpio = textoLimpio(nom_tarjeta, 100);
+		const bancoLimpio = textoLimpio(banco, 100);
+
+		// Validaciones. El número de tarjeta ya no es obligatorio: solo hacen
+		// falta un nombre para reconocerla y su tipo.
+		if (!nombreLimpio || !tipo_tarjeta) {
+			return json({ error: 'Nombre y tipo de tarjeta son requeridos' }, { status: 400 });
 		}
 
 		// Validar tipo de tarjeta
@@ -60,17 +67,16 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Tipo de tarjeta no válido' }, { status: 400 });
 		}
 
-		// Validar longitud de tarjeta (13-19 dígitos para soportar bancarias y departamentales)
-		if (num_tarjeta.length < 13 || num_tarjeta.length > 19) {
-			return json(
-				{ error: 'El número de tarjeta debe tener entre 13 y 19 dígitos' },
-				{ status: 400 }
-			);
-		}
+		// Solo se admiten los últimos dígitos.
+		//
+		// Se rechaza en vez de recortar en silencio: si llega un número completo
+		// significa que algún cliente lo está pidiendo todavía, y conviene que
+		// falle de forma visible en lugar de aceptar un dato que no queremos
+		// tener. Ver migración 017.
+		const ultimosDigitos = validarUltimosDigitos(num_tarjeta);
 
-		// Validar que solo contenga números
-		if (!/^\d+$/.test(num_tarjeta)) {
-			return json({ error: 'El número de tarjeta debe contener solo dígitos' }, { status: 400 });
+		if (ultimosDigitos.error) {
+			return json({ error: ultimosDigitos.error }, { status: 400 });
 		}
 
 		// Validar CLABE si se proporciona (18 dígitos)
@@ -94,11 +100,11 @@ export const POST: RequestHandler = async (event) => {
 			RETURNING *`,
 			[
 				userId,
-				num_tarjeta,
-				nom_tarjeta,
+				ultimosDigitos.valor,
+				nombreLimpio,
 				tipo_tarjeta,
 				clabe || null,
-				banco || null,
+				bancoLimpio,
 				lineaCreditoFinal,
 				dia_corte || null,
 				dias_gracia || null

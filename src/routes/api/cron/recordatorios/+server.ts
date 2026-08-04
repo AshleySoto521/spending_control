@@ -10,6 +10,7 @@ import {
 	MAXIMO_POR_EJECUCION
 } from '$lib/server/recordatorios';
 import { sendRecordatorioEmail, sendPrimerosPasosEmail } from '$lib/server/email';
+import { limpiarLogsSeguridad } from '$lib/server/mantenimiento';
 import { registrarLog } from '$lib/server/security';
 
 function limpiar(valor: string | undefined): string | undefined {
@@ -68,6 +69,22 @@ export const GET: RequestHandler = async (event) => {
 	const appUrl = limpiar(env.APP_URL) ?? 'http://localhost:5173';
 
 	try {
+		// Mantenimiento antes que los correos, y a propósito.
+		//
+		// Es una única sentencia sobre columnas indexadas, así que no compite por
+		// el presupuesto de tiempo. Si fuera al final, una tanda larga de envíos
+		// agotaría el presupuesto y la limpieza no llegaría a ejecutarse nunca.
+		//
+		// Va aquí y no en su propia tarea programada porque el plan Hobby de
+		// Vercel solo admite dos, y conviene dejar la otra libre.
+		const limpieza = await limpiarLogsSeguridad();
+
+		if (limpieza.eliminados > 0) {
+			console.log(
+				`[cron] Retención de logs: ${limpieza.eliminados} eventos eliminados, ${limpieza.restantes} restantes.`
+			);
+		}
+
 		const candidatos = await usuariosInactivos(DIAS_INACTIVIDAD, MAXIMO_POR_EJECUCION);
 
 		let enviados = 0;
@@ -144,7 +161,8 @@ export const GET: RequestHandler = async (event) => {
 			fallidos,
 			pendientes,
 			porSegmento: { enfriados, nuncaArrancaron },
-			diasInactividad: DIAS_INACTIVIDAD
+			diasInactividad: DIAS_INACTIVIDAD,
+			mantenimiento: limpieza
 		});
 	} catch (error) {
 		console.error('[cron] Error al enviar recordatorios:', error);

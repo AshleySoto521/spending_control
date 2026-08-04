@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
+import { textoLimpio } from '$lib/server/validacion';
 
 // GET - Obtener datos del usuario actual
 export const GET: RequestHandler = async (event) => {
@@ -31,10 +32,14 @@ export const GET: RequestHandler = async (event) => {
 export const PUT: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
-		const { nombre, celular } = await event.request.json();
+		const { nombre: nombreEnviado, celular } = await event.request.json();
+
+		// `textoLimpio` en vez de `.trim()`: también colapsa los espacios
+		// interiores repetidos.
+		const nombre = textoLimpio(nombreEnviado, 100);
 
 		// Validaciones
-		if (!nombre || nombre.trim().length === 0) {
+		if (!nombre) {
 			return json({ error: 'El nombre es requerido' }, { status: 400 });
 		}
 
@@ -50,7 +55,7 @@ export const PUT: RequestHandler = async (event) => {
 			SET nombre = $1, celular = $2
 			WHERE id_usuario = $3
 			RETURNING id_usuario, nombre, email, celular, fecha_registro`,
-			[nombre.trim(), celular && celular.trim() !== '' ? celular : null, userId]
+			[nombre, celular && celular.trim() !== '' ? celular : null, userId]
 		);
 
 		return json({ success: true, user: result.rows[0] });

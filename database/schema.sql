@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
     token_expiracion TIMESTAMP,
     acepto_terminos BOOLEAN DEFAULT FALSE NOT NULL,
     acepto_privacidad BOOLEAN DEFAULT FALSE NOT NULL,
+    -- Verificación de correo (migración 019). El token se guarda hasheado.
+    email_verificado BOOLEAN NOT NULL DEFAULT FALSE,
+    token_verificacion VARCHAR(64),
+    token_verificacion_expira TIMESTAMP,
     -- Recordatorios por inactividad (migración 015)
     recordatorios_activos BOOLEAN NOT NULL DEFAULT TRUE,
     ultimo_recordatorio TIMESTAMP,
@@ -42,7 +46,10 @@ CREATE TABLE IF NOT EXISTS formas_pago (
 CREATE TABLE IF NOT EXISTS tarjetas (
     id_tarjeta SERIAL PRIMARY KEY,
     id_usuario UUID NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
-    num_tarjeta VARCHAR(19) NOT NULL,  -- 13-19 dígitos para soportar bancarias y departamentales
+    -- Solo los últimos dígitos, nunca el número completo (migración 017): es lo
+    -- único que la aplicación llega a mostrar, y guardar el resto convertiría
+    -- una filtración de la base en un problema de fraude con tarjeta.
+    num_tarjeta VARCHAR(4),
     nom_tarjeta VARCHAR(100) NOT NULL,
     tipo_tarjeta VARCHAR(20) NOT NULL DEFAULT 'CREDITO',  -- 'CREDITO', 'DEBITO', 'DEPARTAMENTAL', 'SERVICIOS'
     clabe VARCHAR(18),
@@ -53,7 +60,8 @@ CREATE TABLE IF NOT EXISTS tarjetas (
     dias_gracia INTEGER,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     activa BOOLEAN DEFAULT TRUE,
-    CHECK (LENGTH(num_tarjeta) >= 13 AND LENGTH(num_tarjeta) <= 19),
+    CONSTRAINT chk_tarjetas_ultimos_digitos
+        CHECK (num_tarjeta IS NULL OR num_tarjeta ~ '^\d{1,4}$'),
     CHECK (tipo_tarjeta IN ('CREDITO', 'DEBITO', 'DEPARTAMENTAL', 'SERVICIOS'))
 );
 
@@ -554,6 +562,75 @@ CREATE TRIGGER trigger_actualizar_saldo_delete
 AFTER DELETE ON egresos
 FOR EACH ROW
 EXECUTE FUNCTION actualizar_saldo_tarjeta_delete();
+
+-- ---------------------------------------------------------------------------
+-- Recálculo del saldo al registrar, editar o borrar un PAGO (migración 014)
+--
+-- Los triggers de arriba solo miran `egresos`, y además se saltan el cálculo
+-- cuando el egreso no tiene tarjeta asignada, que es justo el caso del egreso
+-- automático que genera un pago. Sin lo que sigue, registrar o borrar un pago
+-- no actualiza `saldo_usado` y la tarjeta muestra una deuda que ya no existe.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION recalcular_saldo_tarjeta(p_id_tarjeta INTEGER)
+RETURNS void AS $$
+BEGIN
+    IF p_id_tarjeta IS NULL THEN
+        RETURN;
+    END IF;
+
+    UPDATE tarjetas t
+    SET saldo_usado = COALESCE((
+            SELECT SUM(
+                CASE
+                    WHEN e.compra_meses = TRUE
+                        THEN e.monto_mensual * (e.num_meses - COALESCE(e.meses_pagados, 0))
+                    ELSE e.monto
+                END
+            )
+            FROM egresos e
+            WHERE e.id_tarjeta = p_id_tarjeta
+        ), 0)
+        - COALESCE((
+            SELECT SUM(p.monto)
+            FROM pagos_tarjetas p
+            WHERE p.id_tarjeta = p_id_tarjeta
+        ), 0)
+    WHERE t.id_tarjeta = p_id_tarjeta;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION actualizar_saldo_por_pago()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        PERFORM recalcular_saldo_tarjeta(OLD.id_tarjeta);
+        RETURN OLD;
+    END IF;
+
+    IF TG_OP = 'UPDATE' AND OLD.id_tarjeta IS DISTINCT FROM NEW.id_tarjeta THEN
+        PERFORM recalcular_saldo_tarjeta(OLD.id_tarjeta);
+    END IF;
+
+    PERFORM recalcular_saldo_tarjeta(NEW.id_tarjeta);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_saldo_pago_insert
+AFTER INSERT ON pagos_tarjetas
+FOR EACH ROW
+EXECUTE FUNCTION actualizar_saldo_por_pago();
+
+CREATE TRIGGER trigger_saldo_pago_update
+AFTER UPDATE ON pagos_tarjetas
+FOR EACH ROW
+EXECUTE FUNCTION actualizar_saldo_por_pago();
+
+CREATE TRIGGER trigger_saldo_pago_delete
+AFTER DELETE ON pagos_tarjetas
+FOR EACH ROW
+EXECUTE FUNCTION actualizar_saldo_por_pago();
 
 -- Tabla de sesiones activas
 CREATE TABLE IF NOT EXISTS sesiones (

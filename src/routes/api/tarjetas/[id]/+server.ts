@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { requireAuth } from '$lib/server/middleware';
-import { idEntero } from '$lib/server/validacion';
+import { idEntero, validarUltimosDigitos, textoLimpio } from '$lib/server/validacion';
 
 // GET - Obtener una tarjeta específica
 export const GET: RequestHandler = async (event) => {
@@ -69,17 +69,11 @@ export const PUT: RequestHandler = async (event) => {
 			return json({ error: 'Tarjeta no encontrada' }, { status: 404 });
 		}
 
-		// Validar número de tarjeta si se proporciona
-		if (data.num_tarjeta) {
-			if (data.num_tarjeta.length < 13 || data.num_tarjeta.length > 19) {
-				return json(
-					{ error: 'El número de tarjeta debe tener entre 13 y 19 dígitos' },
-					{ status: 400 }
-				);
-			}
-			if (!/^\d+$/.test(data.num_tarjeta)) {
-				return json({ error: 'El número de tarjeta debe contener solo dígitos' }, { status: 400 });
-			}
+		// Solo se admiten los últimos dígitos; ver migración 017.
+		const ultimosDigitos = validarUltimosDigitos(data.num_tarjeta);
+
+		if (ultimosDigitos.error) {
+			return json({ error: ultimosDigitos.error }, { status: 400 });
 		}
 
 		// Validar CLABE si se proporciona
@@ -126,11 +120,11 @@ export const PUT: RequestHandler = async (event) => {
 			WHERE id_tarjeta = $10 AND id_usuario = $11
 			RETURNING *`,
 			[
-				data.num_tarjeta,
-				data.nom_tarjeta,
+				ultimosDigitos.valor,
+				textoLimpio(data.nom_tarjeta, 100),
 				data.tipo_tarjeta,
 				data.clabe,
-				data.banco,
+				textoLimpio(data.banco, 100),
 				lineaCreditoFinal,
 				data.dia_corte,
 				data.dias_gracia,
@@ -160,17 +154,45 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'Identificador inválido' }, { status: 400 });
 		}
 
-		// Desactivar en lugar de eliminar
-		const result = await query(
-			'UPDATE tarjetas SET activa = FALSE WHERE id_tarjeta = $1 AND id_usuario = $2 RETURNING *',
-			[id, userId]
+		// Una tarjeta sin movimientos se borra de verdad; con movimientos, se
+		// desactiva.
+		//
+		// Antes todo se desactivaba, así que la tarjeta creada por error seguía
+		// en la lista para siempre, en gris: la persona creía haberla borrado y
+		// ahí seguía. De ahí las once tarjetas vacías acumuladas. Borrarla de
+		// verdad solo es seguro cuando no cuelga nada de ella; si tiene gastos o
+		// pagos, eliminarla se llevaría por delante historial financiero.
+		const movimientos = await query(
+			`SELECT
+				(SELECT COUNT(*) FROM egresos        WHERE id_tarjeta = $1)::int AS gastos,
+				(SELECT COUNT(*) FROM pagos_tarjetas WHERE id_tarjeta = $1)::int AS pagos`,
+			[id]
 		);
+
+		const { gastos, pagos } = movimientos.rows[0];
+		const tieneMovimientos = gastos > 0 || pagos > 0;
+
+		const result = tieneMovimientos
+			? await query(
+					'UPDATE tarjetas SET activa = FALSE WHERE id_tarjeta = $1 AND id_usuario = $2 RETURNING id_tarjeta',
+					[id, userId]
+				)
+			: await query(
+					'DELETE FROM tarjetas WHERE id_tarjeta = $1 AND id_usuario = $2 RETURNING id_tarjeta',
+					[id, userId]
+				);
 
 		if (result.rows.length === 0) {
 			return json({ error: 'Tarjeta no encontrada' }, { status: 404 });
 		}
 
-		return json({ success: true, message: 'Tarjeta desactivada correctamente' });
+		return json({
+			success: true,
+			eliminada: !tieneMovimientos,
+			message: tieneMovimientos
+				? `La tarjeta se archivó porque tiene ${gastos + pagos} movimiento(s) asociados. Su historial se conserva.`
+				: 'Tarjeta eliminada correctamente'
+		});
 	} catch (error: any) {
 		if (error.status === 401) {
 			return error;

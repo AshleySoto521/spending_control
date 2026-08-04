@@ -47,6 +47,58 @@ export function fechaISO(valor: unknown): string | null {
 }
 
 /**
+ * Normaliza un texto escrito por una persona.
+ *
+ * Recorta los extremos y colapsa los espacios interiores repetidos. Sin esto se
+ * acumulan valores que parecen iguales y no lo son: en la base hay «BBVA » con
+ * espacio final conviviendo con «BBVA», y nombres como «Aránzazu  del Rayo» con
+ * doble espacio. Eso rompe agrupaciones, ordenaciones y la detección de
+ * duplicados, y ya provocó una vez que fallara la exportación a Excel.
+ *
+ * Devuelve `null` para un texto vacío, de modo que la columna guarde NULL en
+ * lugar de una cadena en blanco.
+ */
+export function textoLimpio(valor: unknown, maxLongitud = 200): string | null {
+	if (typeof valor !== 'string') return null;
+
+	const limpio = valor.trim().replace(/\s+/g, ' ').slice(0, maxLongitud);
+
+	return limpio === '' ? null : limpio;
+}
+
+/**
+ * Últimos dígitos de una tarjeta.
+ *
+ * La aplicación guarda como mucho cuatro dígitos, que es lo único que llega a
+ * mostrar («**** **** **** 1234»). Un número completo se rechaza en lugar de
+ * recortarse en silencio: si llega, es que algún cliente lo sigue pidiendo, y
+ * eso hay que verlo, no taparlo. Ver migración 017.
+ */
+export function validarUltimosDigitos(valor: unknown): { valor: string | null; error?: string } {
+	if (valor === undefined || valor === null || valor === '') {
+		return { valor: null };
+	}
+
+	if (typeof valor !== 'string') {
+		return { valor: null, error: 'Los últimos dígitos deben ser texto' };
+	}
+
+	const limpio = valor.trim();
+
+	if (limpio === '') return { valor: null };
+
+	if (!/^\d{1,4}$/.test(limpio)) {
+		return {
+			valor: null,
+			error:
+				'Guarda solo los últimos 4 dígitos de la tarjeta. Por seguridad, esta aplicación no almacena el número completo.'
+		};
+	}
+
+	return { valor: limpio };
+}
+
+/**
  * Deja un texto apto para el parámetro `filename` de Content-Disposition.
  * Sin esto, un valor con comillas o punto y coma podría alterar la cabecera.
  */

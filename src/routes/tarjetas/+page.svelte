@@ -42,6 +42,33 @@
 	}
 
 	async function handleSubmit() {
+		// Aviso de duplicado por los últimos dígitos, no por el nombre.
+		//
+		// El nombre no sirve como identificador: un mismo banco reparte varios
+		// productos —BBVA Azul y BBVA Oro, Banamex Oro y Rewards— y son tarjetas
+		// distintas con todo el derecho a convivir. Los dígitos sí identifican la
+		// tarjeta física, y además detectan el caso que de verdad genera
+		// duplicados: la misma tarjeta capturada dos veces escribiendo el banco
+		// de otra forma («NU BANK» la primera vez, «Banco NU» la segunda).
+		//
+		// Se avisa, no se bloquea: dos tarjetas pueden terminar en los mismos
+		// cuatro dígitos por casualidad.
+		if (!editingId) {
+			const digitos = (formData.num_tarjeta ?? '').trim();
+			const repetida = digitos
+				? tarjetas.find((t: any) => t.num_tarjeta && t.num_tarjeta === digitos)
+				: null;
+
+			if (
+				repetida &&
+				!confirm(
+					`Ya tienes registrada «${repetida.nom_tarjeta}»${repetida.banco ? ` (${repetida.banco})` : ''}, que también termina en ${digitos}. ¿Aun así quieres crear esta?`
+				)
+			) {
+				return;
+			}
+		}
+
 		try {
 			const token = $authStore.token;
 			const url = editingId ? `/api/tarjetas/${editingId}` : '/api/tarjetas';
@@ -101,7 +128,15 @@
 	}
 
 	async function handleDelete(id: number) {
-		if (!confirm('¿Estás seguro de desactivar esta tarjeta? No se eliminará, solo se ocultará.')) return;
+		// El servidor decide si borra o archiva según tenga movimientos o no, así
+		// que el aviso cubre los dos casos sin prometer de más.
+		if (
+			!confirm(
+				'Se eliminará la tarjeta. Si tiene gastos o pagos registrados, se archivará en su lugar para no perder ese historial. ¿Continuar?'
+			)
+		) {
+			return;
+		}
 
 		try {
 			const token = $authStore.token;
@@ -109,7 +144,14 @@
 
 			if (!response.ok) {
 				const data = await response.json();
-				throw new Error(data.error || 'Error al desactivar tarjeta');
+				throw new Error(data.error || 'Error al eliminar la tarjeta');
+			}
+
+			const resultado = await response.json();
+
+			// Solo se avisa cuando NO se borró, que es lo que puede sorprender.
+			if (!resultado.eliminada) {
+				alert(resultado.message);
 			}
 
 			loadTarjetas();
@@ -252,7 +294,11 @@
 						<div class="mb-6">
 							<div class="text-lg font-semibold mb-2">{tarjeta.nom_tarjeta}</div>
 							<div class="text-sm font-mono tracking-wider">
-								**** **** **** {tarjeta.num_tarjeta.slice(-4)}
+								{#if tarjeta.num_tarjeta}
+									**** **** **** {tarjeta.num_tarjeta.slice(-4)}
+								{:else}
+									{tarjeta.banco || 'Sin banco'}
+								{/if}
 							</div>
 						</div>
 
@@ -348,18 +394,23 @@
 						</div>
 
 						<div>
-							<label for="num_tarjeta" class="block text-sm font-medium text-gray-700 mb-2">Número de Tarjeta</label>
+							<label for="num_tarjeta" class="block text-sm font-medium text-gray-700 mb-2">
+								Últimos 4 dígitos <span class="text-gray-400 font-normal">(opcional)</span>
+							</label>
 							<input
 								id="num_tarjeta"
 								bind:value={formData.num_tarjeta}
-								required
-								minlength="13"
-								maxlength="19"
-								pattern="\d+"
+								maxlength="4"
+								inputmode="numeric"
+								pattern="\d{'{'}1,4{'}'}"
 								class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 "
-								placeholder="1234567890123456"
+								placeholder="1234"
 							/>
-							<p class="mt-1 text-xs text-gray-500">13-19 dígitos (soporta bancarias y departamentales)</p>
+							<p class="mt-1 text-xs text-gray-500">
+								Te ayudan a distinguir entre tarjetas del mismo banco y a que te avisemos
+								si ya habías registrado esta. Por seguridad no guardamos el número
+								completo de ninguna tarjeta.
+							</p>
 						</div>
 
 						<div>
