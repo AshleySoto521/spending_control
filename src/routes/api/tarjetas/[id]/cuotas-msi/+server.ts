@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero } from '$lib/server/validacion';
 
 // GET - Obtener cuotas MSI pendientes de una tarjeta específica
@@ -61,8 +61,8 @@ export const GET: RequestHandler = async (event) => {
 		return json({
 			cuotas_msi: cuotasMSI.rows
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener cuotas MSI:', error);

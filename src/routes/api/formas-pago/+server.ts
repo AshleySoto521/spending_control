@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 
 // GET - Catálogo de formas de pago (requiere sesión)
 export const GET: RequestHandler = async (event) => {
@@ -13,8 +13,8 @@ export const GET: RequestHandler = async (event) => {
 		);
 
 		return json({ formas_pago: result.rows });
-	} catch (error: any) {
-		if (error?.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener formas de pago:', error);

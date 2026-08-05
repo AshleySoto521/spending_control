@@ -2,13 +2,14 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth';
-	import { page } from '$app/stores';
 
 	// SEO Configuration
 	const seoConfig = {
 		title: 'Control de Gastos México - Gestiona tus Finanzas Personales Gratis',
-		description: 'App gratuita de control de gastos para México. Proyecta tu futuro financiero, gestiona tarjetas de crédito, registra ingresos y egresos. Herramienta 100% gratis hecha para mexicanos.',
-		keywords: 'control de gastos, finanzas personales méxico, app gastos gratis, control tarjetas crédito, presupuesto personal, gestión financiera, control dinero, app financiera méxico, gastos quincenales',
+		description:
+			'App gratuita de control de gastos para México. Proyecta tu futuro financiero, gestiona tarjetas de crédito, registra ingresos y egresos. Herramienta 100% gratis hecha para mexicanos.',
+		keywords:
+			'control de gastos, finanzas personales méxico, app gastos gratis, control tarjetas crédito, presupuesto personal, gestión financiera, control dinero, app financiera méxico, gastos quincenales',
 		url: 'https://controlgastosmx.vercel.app',
 		image: 'https://controlgastosmx.vercel.app/icons/windows11/SplashScreen.scale-400.png',
 		siteName: 'ControlGastosMX',
@@ -74,7 +75,18 @@
 	<meta name="geo.region" content="MX" />
 	<meta name="geo.placename" content="México" />
 
-	<!-- Structured Data / JSON-LD for Google -->
+	<!--
+		Datos estructurados para Google.
+
+		`{@html}` es seguro aquí: todo lo que se interpola sale de `seoConfig`,
+		que son constantes de este mismo archivo. No entra nada del usuario ni de
+		la base de datos, así que no hay superficie de inyección.
+
+		La etiqueta de cierre de más abajo se compone en dos trozos por el mismo
+		motivo: escrita entera, el analizador vería el cierre dentro de la
+		cadena y cortaría el bloque antes de tiempo.
+	-->
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html `
 		<script type="application/ld+json">
 		{
@@ -117,7 +129,7 @@
 				"name": "Aqua Studio"
 			}
 		}
-		<\/script>
+		</${'scr' + 'ipt'}>
 	`}
 </svelte:head>
 
@@ -127,13 +139,21 @@
 			<div class="flex justify-between items-center h-16">
 				<div class="flex items-center gap-2">
 					<span class="text-2xl">💰</span>
-					<span class="text-xl font-bold text-gray-800 tracking-tight">ControlGastos<span class="text-blue-600">MX</span></span>
+					<span class="text-xl font-bold text-gray-800 tracking-tight"
+						>ControlGastos<span class="text-blue-600">MX</span></span
+					>
 				</div>
 				<div class="flex items-center gap-4">
-					<button onclick={goToLogin} class="text-gray-600 hover:text-gray-900 font-medium transition-colors hidden sm:block">
+					<button
+						onclick={goToLogin}
+						class="text-gray-600 hover:text-gray-900 font-medium transition-colors hidden sm:block"
+					>
 						Iniciar Sesión
 					</button>
-					<button onclick={goToRegister} class="bg-gray-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+					<button
+						onclick={goToRegister}
+						class="bg-gray-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+					>
 						Registrarse
 					</button>
 				</div>
@@ -143,30 +163,49 @@
 
 	<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-16 lg:pt-24">
 		<div class="text-center max-w-4xl mx-auto">
-			<div class="inline-block bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-sm font-semibold mb-6 border border-blue-100">
+			<div
+				class="inline-block bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-sm font-semibold mb-6 border border-blue-100"
+			>
 				✨ Nueva función: Proyección de Saldos
 			</div>
-			<h1 class="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight">
+			<h1
+				class="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight"
+			>
 				Control de Gastos y Finanzas Personales en México
-				<span class="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 block mt-2">100% Gratis y Fácil de Usar</span>
+				<span
+					class="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 block mt-2"
+					>100% Gratis y Fácil de Usar</span
+				>
 			</h1>
 			<p class="text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-				Gestiona tu dinero, proyecta tu futuro financiero y controla tus tarjetas de crédito. <strong>App mexicana</strong> que entiende tus quincenas, meses sin intereses y necesidades reales.
+				Gestiona tu dinero, proyecta tu futuro financiero y controla tus tarjetas de crédito. <strong
+					>App mexicana</strong
+				> que entiende tus quincenas, meses sin intereses y necesidades reales.
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-				<button onclick={goToRegister} class="w-full sm:w-auto bg-gray-900 text-white text-lg px-8 py-4 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1">
+				<button
+					onclick={goToRegister}
+					class="w-full sm:w-auto bg-gray-900 text-white text-lg px-8 py-4 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+				>
 					Comenzar Gratis Ahora
 				</button>
-				<button onclick={goToLogin} class="w-full sm:w-auto text-gray-600 text-lg px-8 py-4 font-medium hover:text-gray-900 transition-colors">
+				<button
+					onclick={goToLogin}
+					class="w-full sm:w-auto text-gray-600 text-lg px-8 py-4 font-medium hover:text-gray-900 transition-colors"
+				>
 					Ya tengo cuenta &rarr;
 				</button>
 			</div>
 		</div>
 
 		<div class="mt-20 flex justify-center perspective-1000">
-			<div class="relative bg-gray-900 rounded-[3rem] p-4 shadow-2xl border-4 border-gray-800 max-w-[320px] sm:max-w-[380px] w-full transform rotate-x-12 hover:rotate-0 transition-transform duration-700">
-				<div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-gray-900 rounded-b-2xl z-20"></div>
-				
+			<div
+				class="relative bg-gray-900 rounded-[3rem] p-4 shadow-2xl border-4 border-gray-800 max-w-[320px] sm:max-w-[380px] w-full transform rotate-x-12 hover:rotate-0 transition-transform duration-700"
+			>
+				<div
+					class="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-gray-900 rounded-b-2xl z-20"
+				></div>
+
 				<div class="bg-white rounded-[2.5rem] overflow-hidden h-[600px] flex flex-col relative">
 					<div class="bg-blue-600 p-8 pt-12 text-white">
 						<div class="text-sm opacity-80 mb-1">Balance Total</div>
@@ -192,21 +231,29 @@
 						<div class="space-y-3">
 							<div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
 								<div class="flex items-center gap-3">
-									<div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">☕</div>
+									<div
+										class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600"
+									>
+										☕
+									</div>
 									<div class="text-sm font-medium">Starbucks</div>
 								</div>
 								<span class="text-red-600 font-bold">-$85.00</span>
 							</div>
 							<div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
 								<div class="flex items-center gap-3">
-									<div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">💰</div>
+									<div
+										class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600"
+									>
+										💰
+									</div>
 									<div class="text-sm font-medium">Nómina</div>
 								</div>
 								<span class="text-green-600 font-bold">+$8,000</span>
 							</div>
 						</div>
 					</div>
-					
+
 					<div class="bg-white border-t p-4 flex justify-around text-2xl text-gray-400">
 						<div class="text-blue-600">🏠</div>
 						<div>📊</div>
@@ -230,65 +277,98 @@
 			</div>
 
 			<div class="grid md:grid-cols-3 gap-8">
-				
-				<div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-					<div class="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">STAR</div>
-					<div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+				<div
+					class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group"
+				>
+					<div
+						class="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl"
+					>
+						STAR
+					</div>
+					<div
+						class="w-14 h-14 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+					>
 						<span class="text-3xl">🔮</span>
 					</div>
 					<h3 class="text-xl font-bold text-gray-900 mb-3">Proyección Financiera</h3>
 					<p class="text-gray-600 leading-relaxed">
-						¿Te alcanzará para la tarjeta? Nuestra herramienta te dice <strong>hoy</strong> cómo terminarás la quincena simulando tus pagos futuros.
+						¿Te alcanzará para la tarjeta? Nuestra herramienta te dice <strong>hoy</strong> cómo terminarás
+						la quincena simulando tus pagos futuros.
 					</p>
 				</div>
 
-				<div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-					<div class="w-14 h-14 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+				<div
+					class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+				>
+					<div
+						class="w-14 h-14 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+					>
 						<span class="text-3xl">⚡</span>
 					</div>
 					<h3 class="text-xl font-bold text-gray-900 mb-3">Registro Flash</h3>
 					<p class="text-gray-600 leading-relaxed">
-						Registra tus gastos en lo que tardas en pedir tu café. Categorización automática y sin formularios eternos.
+						Registra tus gastos en lo que tardas en pedir tu café. Categorización automática y sin
+						formularios eternos.
 					</p>
 				</div>
 
-				<div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-					<div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+				<div
+					class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+				>
+					<div
+						class="w-14 h-14 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+					>
 						<span class="text-3xl">💳</span>
 					</div>
 					<h3 class="text-xl font-bold text-gray-900 mb-3">Control de Tarjetas</h3>
 					<p class="text-gray-600 leading-relaxed">
-						Gestiona fechas de corte y pagos mínimos. Nunca más pagues intereses por olvidar una fecha.
+						Gestiona fechas de corte y pagos mínimos. Nunca más pagues intereses por olvidar una
+						fecha.
 					</p>
 				</div>
 
-				<div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-					<div class="w-14 h-14 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+				<div
+					class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+				>
+					<div
+						class="w-14 h-14 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+					>
 						<span class="text-3xl">📈</span>
 					</div>
 					<h3 class="text-xl font-bold text-gray-900 mb-3">Reportes Claros</h3>
 					<p class="text-gray-600 leading-relaxed">
-						Gráficas que sí se entienden. Visualiza a dónde se va tu dinero y encuentra fugas de capital al instante.
+						Gráficas que sí se entienden. Visualiza a dónde se va tu dinero y encuentra fugas de
+						capital al instante.
 					</p>
 				</div>
 
-				<div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-					<div class="w-14 h-14 bg-gray-100 text-gray-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+				<div
+					class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+				>
+					<div
+						class="w-14 h-14 bg-gray-100 text-gray-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+					>
 						<span class="text-3xl">🔒</span>
 					</div>
 					<h3 class="text-xl font-bold text-gray-900 mb-3">Privacidad Total</h3>
 					<p class="text-gray-600 leading-relaxed">
-						Tus finanzas son asunto tuyo. Datos encriptados nivel bancario y política de cero venta de datos.
+						Tus finanzas son asunto tuyo. Datos encriptados nivel bancario y política de cero venta
+						de datos.
 					</p>
 				</div>
 
-				<div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-					<div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+				<div
+					class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+				>
+					<div
+						class="w-14 h-14 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"
+					>
 						<span class="text-3xl">☁️</span>
 					</div>
 					<h3 class="text-xl font-bold text-gray-900 mb-3">Siempre disponible</h3>
 					<p class="text-gray-600 leading-relaxed">
-						En tu celular, tablet o computadora. Tu información se sincroniza en tiempo real estés donde estés.
+						En tu celular, tablet o computadora. Tu información se sincroniza en tiempo real estés
+						donde estés.
 					</p>
 				</div>
 			</div>
@@ -304,19 +384,24 @@
 					</h2>
 					<div class="space-y-8">
 						<div class="flex gap-5">
-							<div class="shrink-0 w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+							<div
+								class="shrink-0 w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center"
+							>
 								<span class="text-xl font-bold">✓</span>
 							</div>
 							<div>
 								<h3 class="text-xl font-bold text-gray-900 mb-2">Simplicidad Radical</h3>
 								<p class="text-gray-600">
-									Otras apps te piden hasta el RFC del comercio. Nosotros solo te pedimos lo esencial para que no te de flojera registrar.
+									Otras apps te piden hasta el RFC del comercio. Nosotros solo te pedimos lo
+									esencial para que no te de flojera registrar.
 								</p>
 							</div>
 						</div>
 
 						<div class="flex gap-5">
-							<div class="shrink-0 w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+							<div
+								class="shrink-0 w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"
+							>
 								<span class="text-xl font-bold">✓</span>
 							</div>
 							<div>
@@ -328,13 +413,16 @@
 						</div>
 
 						<div class="flex gap-5">
-							<div class="shrink-0 w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
+							<div
+								class="shrink-0 w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center"
+							>
 								<span class="text-xl font-bold">✓</span>
 							</div>
 							<div>
 								<h3 class="text-xl font-bold text-gray-900 mb-2">Hecho para México</h3>
 								<p class="text-gray-600">
-									Entendemos qué es una quincena, qué son los meses sin intereses y cómo funciona tu economía.
+									Entendemos qué es una quincena, qué son los meses sin intereses y cómo funciona tu
+									economía.
 								</p>
 							</div>
 						</div>
@@ -342,14 +430,19 @@
 				</div>
 
 				<div class="bg-gray-900 rounded-3xl p-10 text-white shadow-2xl relative overflow-hidden">
-					<div class="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-					<div class="absolute bottom-0 left-0 w-64 h-64 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+					<div
+						class="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"
+					></div>
+					<div
+						class="absolute bottom-0 left-0 w-64 h-64 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"
+					></div>
 
 					<div class="relative z-10">
 						<div class="text-5xl mb-6">🚀</div>
 						<h3 class="text-3xl font-bold mb-4">Acceso Anticipado</h3>
 						<p class="text-gray-300 mb-8 text-lg">
-							Estamos construyendo la mejor herramienta financiera y queremos que seas parte. Crea tu cuenta hoy y obtén acceso ilimitado de por vida.
+							Estamos construyendo la mejor herramienta financiera y queremos que seas parte. Crea
+							tu cuenta hoy y obtén acceso ilimitado de por vida.
 						</p>
 						<ul class="space-y-4 mb-8">
 							<li class="flex items-center gap-3">
@@ -361,7 +454,10 @@
 								<span>No pedimos tarjeta</span>
 							</li>
 						</ul>
-						<button onclick={goToRegister} class="w-full bg-white text-gray-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-colors shadow-lg">
+						<button
+							onclick={goToRegister}
+							class="w-full bg-white text-gray-900 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-colors shadow-lg"
+						>
 							Crear mi cuenta gratis
 						</button>
 					</div>
@@ -379,21 +475,33 @@
 				</div>
 				<div class="text-center md:text-center">
 					<div class="flex flex-wrap justify-center items-center gap-3 text-sm mb-3">
-						<a href="/terminos" class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline">
+						<a
+							href="/terminos"
+							class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline"
+						>
 							Términos y Condiciones
 						</a>
 						<span class="text-gray-400">|</span>
-						<a href="/privacidad" class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline">
+						<a
+							href="/privacidad"
+							class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline"
+						>
 							Aviso de Privacidad
 						</a>
 						<span class="text-gray-400">|</span>
-						<a href="/politica-cookies" class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline">
+						<a
+							href="/politica-cookies"
+							class="text-gray-600 hover:text-gray-900 font-medium transition-colors hover:underline"
+						>
 							Política de Cookies
 						</a>
 					</div>
 					<div class="text-gray-500 text-sm">
 						<p class="mb-2">¿Necesitas ayuda?</p>
-						<a href="mailto:contactoaquastudio@gmail.com" class="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors">
+						<a
+							href="mailto:contactoaquastudio@gmail.com"
+							class="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
+						>
 							contactoaquastudio@gmail.com
 						</a>
 					</div>
@@ -409,10 +517,18 @@
 <style>
 	/* Animación sutil para el fondo del CTA */
 	@keyframes blob {
-		0% { transform: translate(0px, 0px) scale(1); }
-		33% { transform: translate(30px, -50px) scale(1.1); }
-		66% { transform: translate(-20px, 20px) scale(0.9); }
-		100% { transform: translate(0px, 0px) scale(1); }
+		0% {
+			transform: translate(0px, 0px) scale(1);
+		}
+		33% {
+			transform: translate(30px, -50px) scale(1.1);
+		}
+		66% {
+			transform: translate(-20px, 20px) scale(0.9);
+		}
+		100% {
+			transform: translate(0px, 0px) scale(1);
+		}
 	}
 	.animate-blob {
 		animation: blob 7s infinite;

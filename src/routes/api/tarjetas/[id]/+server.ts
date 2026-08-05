@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero, validarUltimosDigitos, textoLimpio } from '$lib/server/validacion';
 
 // GET - Obtener una tarjeta específica
@@ -39,8 +39,8 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		return json({ tarjeta: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener tarjeta:', error);
@@ -135,8 +135,8 @@ export const PUT: RequestHandler = async (event) => {
 		);
 
 		return json({ success: true, tarjeta: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al actualizar tarjeta:', error);
@@ -193,8 +193,8 @@ export const DELETE: RequestHandler = async (event) => {
 				? `La tarjeta se archivó porque tiene ${gastos + pagos} movimiento(s) asociados. Su historial se conserva.`
 				: 'Tarjeta eliminada correctamente'
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al eliminar tarjeta:', error);

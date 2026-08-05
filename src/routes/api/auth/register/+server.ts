@@ -122,7 +122,10 @@ export const POST: RequestHandler = async (event) => {
 		// puede reenviar la confirmación desde el perfil.
 		try {
 			const tokenVerificacion = await generarTokenVerificacion(user.id_usuario);
-			const appUrl = String(env.APP_URL ?? '').split('#')[0].trim() || 'http://localhost:5173';
+			const appUrl =
+				String(env.APP_URL ?? '')
+					.split('#')[0]
+					.trim() || 'http://localhost:5173';
 
 			await sendVerificacionEmail(
 				user.email,

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { query, getClient } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { query, getClient, type ParametroSql } from '$lib/server/db';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero, fechaISO } from '$lib/server/validacion';
 
 // GET - Obtener pagos de préstamos del usuario
@@ -28,7 +28,7 @@ export const GET: RequestHandler = async (event) => {
 			WHERE pp.id_usuario = $1
 		`;
 
-		const queryParams: any[] = [userId];
+		const queryParams: ParametroSql[] = [userId];
 
 		if (id_prestamo) {
 			pagosQuery += ` AND pp.id_prestamo = $2`;
@@ -40,8 +40,8 @@ export const GET: RequestHandler = async (event) => {
 		const pagos = await query(pagosQuery, queryParams);
 
 		return json({ pagos: pagos.rows });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener pagos de préstamos:', error);
@@ -155,8 +155,8 @@ export const POST: RequestHandler = async (event) => {
 			// queda sin conexiones tras 20 peticiones.
 			client.release();
 		}
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al registrar pago de préstamo:', error);
@@ -250,8 +250,8 @@ export const DELETE: RequestHandler = async (event) => {
 		} finally {
 			client.release();
 		}
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al eliminar pago de préstamo:', error);

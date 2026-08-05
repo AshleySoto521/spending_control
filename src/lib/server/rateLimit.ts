@@ -45,7 +45,10 @@ export function consumir(clave: string, maximo: number, ventanaMs: number): Resu
 	bucket.conteo += 1;
 
 	if (bucket.conteo > maximo) {
-		return { permitido: false, reintentarEn: Math.max(1, Math.ceil((bucket.reinicio - ahora) / 1000)) };
+		return {
+			permitido: false,
+			reintentarEn: Math.max(1, Math.ceil((bucket.reinicio - ahora) / 1000))
+		};
 	}
 
 	return { permitido: true, reintentarEn: 0 };

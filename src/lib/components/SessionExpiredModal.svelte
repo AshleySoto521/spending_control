@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/stores/auth';
 	import { sessionStore } from '$lib/stores/session';
+	import { estaInstalada } from '$lib/utils/navegador';
 
 	interface Props {
 		reason: 'replaced' | 'expired';
@@ -17,8 +18,7 @@
 		authStore.logout();
 
 		// Detectar si la app está instalada como PWA
-		const isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
-		                    (window.navigator as any).standalone === true;
+		const isInstalled = estaInstalada();
 
 		// Si está instalada, ir al login; si es navegador, ir a la página de bienvenida
 		goto(isInstalled ? '/login' : '/');
@@ -42,7 +42,9 @@
 <div
 	class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"
 	onclick={handleGoToLogin}
-	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleGoToLogin(); }}
+	onkeydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') handleGoToLogin();
+	}}
 	role="button"
 	tabindex="-1"
 >
@@ -71,8 +73,8 @@
 				</p>
 				<div class="bg-gray-100 border border-gray-200 rounded-lg p-4 mb-4">
 					<p class="text-sm text-gray-700">
-						<strong>Nota:</strong> Solo puedes tener una sesión activa a la vez.
-						La sesión anterior se cierra automáticamente cuando inicias sesión desde otro lugar.
+						<strong>Nota:</strong> Solo puedes tener una sesión activa a la vez. La sesión anterior se
+						cierra automáticamente cuando inicias sesión desde otro lugar.
 					</p>
 				</div>
 			{:else}
@@ -89,8 +91,8 @@
 					</div>
 					<div class="ml-3">
 						<p class="text-sm text-yellow-800">
-							<strong>Seguridad:</strong> Si no reconoces esta actividad o crees que tu cuenta
-							está comprometida, cambia tu contraseña inmediatamente o contacta a soporte.
+							<strong>Seguridad:</strong> Si no reconoces esta actividad o crees que tu cuenta está comprometida,
+							cambia tu contraseña inmediatamente o contacta a soporte.
 						</p>
 					</div>
 				</div>
@@ -108,7 +110,10 @@
 			<div class="mt-4 text-center">
 				<p class="text-sm text-gray-500">
 					¿Necesitas ayuda? Contacta a
-					<a href="mailto:contactoaquastudio@gmail.com" class="text-gray-800 hover:underline font-medium">
+					<a
+						href="mailto:contactoaquastudio@gmail.com"
+						class="text-gray-800 hover:underline font-medium"
+					>
 						soporte
 					</a>
 				</p>

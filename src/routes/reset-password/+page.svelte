@@ -50,7 +50,7 @@
 			setTimeout(() => {
 				goto('/login');
 			}, 2000);
-		} catch (err) {
+		} catch {
 			error = 'Error de conexión';
 		} finally {
 			loading = false;
@@ -71,7 +71,13 @@
 				<p class="text-sm">Redirigiendo al inicio de sesión...</p>
 			</div>
 		{:else}
-			<form onsubmit={(e) => { e.preventDefault(); handleResetPassword(); }} class="space-y-6">
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleResetPassword();
+				}}
+				class="space-y-6"
+			>
 				{#if error}
 					<div class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg">
 						{error}
@@ -90,7 +96,9 @@
 						class="input-minimal"
 						placeholder="••••••••"
 					/>
-					<p class="mt-1 text-sm text-gray-500">Mínimo 10 caracteres, con al menos una letra y un número</p>
+					<p class="mt-1 text-sm text-gray-500">
+						Mínimo 10 caracteres, con al menos una letra y un número
+					</p>
 				</div>
 
 				<div>

@@ -4,17 +4,22 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import ExportModal from '$lib/components/ExportModal.svelte';
-	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost, apiPut, apiDelete } from '$lib/utils/apiClient';
 	import { presentarSaldo, calcularDisponible } from '$lib/utils/saldo';
+	import { esSesionExpirada, mensajeDeError } from '$lib/utils/errores';
+	import type { Tarjeta, Egreso, FormaPago, ResumenTarjeta } from '$lib/tipos';
 
 	let loading = $state(true);
 	let error = $state('');
-	let egresos: any[] = $state([]);
-	let formasPago: any[] = $state([]);
-	let tarjetas: any[] = $state([]);
-	let resumenTarjetas: any[] = $state([]);
-	let resumenSinTarjeta: any = $state(null);
+	let egresos: Egreso[] = $state([]);
+	let formasPago: FormaPago[] = $state([]);
+	let tarjetas: Tarjeta[] = $state([]);
+	let resumenTarjetas: ResumenTarjeta[] = $state([]);
+	let resumenSinTarjeta: {
+		total_egresos: number;
+		total_gastado: string;
+		ultimo_egreso: string | null;
+	} | null = $state(null);
 	let showModal = $state(false);
 	let showExportModal = $state(false);
 	let filtroTarjeta = $state<number | null>(null);
@@ -34,13 +39,11 @@
 
 	async function loadData() {
 		try {
-			const token = $authStore.token;
-
 			const [egresosRes, formasPagoRes, tarjetasRes, resumenRes] = await Promise.all([
-				apiGet('/api/egresos', token),
+				apiGet('/api/egresos'),
 				fetch('/api/formas-pago'),
-				apiGet('/api/tarjetas', token),
-				apiGet('/api/egresos/resumen-tarjetas', token)
+				apiGet('/api/tarjetas'),
+				apiGet('/api/egresos/resumen-tarjetas')
 			]);
 
 			if (!egresosRes.ok) throw new Error('Error al cargar egresos');
@@ -52,19 +55,19 @@
 
 			egresos = egresosData.egresos;
 			formasPago = formasPagoData.formas_pago;
-			tarjetas = tarjetasData.tarjetas.filter((t: any) => t.activa);
+			tarjetas = tarjetasData.tarjetas.filter((t: Tarjeta) => t.activa);
 			resumenTarjetas = resumenData.resumen_tarjetas || [];
 			resumenSinTarjeta = resumenData.resumen_sin_tarjeta;
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		} finally {
 			loading = false;
 		}
 	}
 
-	function handleEdit(egreso: any) {
+	function handleEdit(egreso: Egreso) {
 		editingId = egreso.id_egreso;
 
 		// Convertir id_forma_pago a string, manejando null/undefined
@@ -91,7 +94,6 @@
 
 	async function handleSubmit() {
 		try {
-			const token = $authStore.token;
 			const url = editingId ? `/api/egresos/${editingId}` : '/api/egresos';
 			const body = {
 				...formData,
@@ -99,13 +101,12 @@
 				id_forma_pago: parseInt(formData.id_forma_pago),
 				id_tarjeta: formData.id_tarjeta ? parseInt(formData.id_tarjeta) : null,
 				compra_meses: formData.compra_meses,
-				num_meses: formData.compra_meses && formData.num_meses ? parseInt(formData.num_meses) : null,
+				num_meses:
+					formData.compra_meses && formData.num_meses ? parseInt(formData.num_meses) : null,
 				mes_inicio_pago: formData.compra_meses ? parseInt(formData.mes_inicio_pago) : null
 			};
 
-			const response = editingId
-				? await apiPut(url, token, body)
-				: await apiPost(url, token, body);
+			const response = editingId ? await apiPut(url, body) : await apiPost(url, body);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -127,9 +128,9 @@
 				mes_inicio_pago: '0'
 			};
 			loadData();
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
@@ -138,14 +139,13 @@
 		if (!confirm('¿Estás seguro de eliminar este egreso?')) return;
 
 		try {
-			const token = $authStore.token;
-			const response = await apiDelete(`/api/egresos/${id}`, token);
+			const response = await apiDelete(`/api/egresos/${id}`);
 
 			if (!response.ok) throw new Error('Error al eliminar');
 			loadData();
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
@@ -174,10 +174,10 @@
 		}
 		if (filtroTarjeta === -1) {
 			// Efectivo/Transferencia (sin tarjeta)
-			return egresos.filter(e => !e.id_tarjeta);
+			return egresos.filter((e) => !e.id_tarjeta);
 		}
 		// Filtrar por tarjeta específica
-		return egresos.filter(e => e.id_tarjeta && parseInt(e.id_tarjeta) === filtroTarjeta);
+		return egresos.filter((e) => e.id_tarjeta === filtroTarjeta);
 	});
 </script>
 
@@ -193,16 +193,25 @@
 				</div>
 				<div class="flex gap-3">
 					<button
-						onclick={() => { showExportModal = true; }}
+						onclick={() => {
+							showExportModal = true;
+						}}
 						class="bg-green-600 text-white px-4 py-1 rounded-lg font-semibold hover:bg-green-700 transition flex items-center"
 					>
 						<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+							/>
 						</svg>
 						Exportar
 					</button>
 					<button
-						onclick={() => { showModal = true; }}
+						onclick={() => {
+							showModal = true;
+						}}
 						class="bg-gray-800 text-white px-4 py1 rounded-lg font-semibold hover:bg-gray-900 transition"
 					>
 						+ Nuevo Egreso
@@ -232,7 +241,7 @@
 								class="bg-white rounded-xl shadow-sm border-2 p-6 cursor-pointer hover:shadow-md transition text-left w-full"
 								class:border-gray-800={filtroTarjeta === -1}
 								class:border-gray-200={filtroTarjeta !== -1}
-								onclick={() => filtroTarjeta = filtroTarjeta === -1 ? null : -1}
+								onclick={() => (filtroTarjeta = filtroTarjeta === -1 ? null : -1)}
 							>
 								<div class="flex items-start justify-between mb-4">
 									<div>
@@ -240,14 +249,26 @@
 										<p class="text-xs text-gray-500 mt-1">Sin tarjeta</p>
 									</div>
 									<div class="bg-green-100 rounded-full p-2">
-										<svg class="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+										<svg
+											class="w-5 h-5 text-green-700"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+											/>
 										</svg>
 									</div>
 								</div>
 								<div class="space-y-2">
 									<div>
-										<p class="text-2xl font-bold text-gray-900">{formatCurrency(parseFloat(resumenSinTarjeta.total_gastado))}</p>
+										<p class="text-2xl font-bold text-gray-900">
+											{formatCurrency(parseFloat(resumenSinTarjeta.total_gastado))}
+										</p>
 										<p class="text-xs text-gray-500">Total gastado</p>
 									</div>
 									<div class="flex justify-between text-sm">
@@ -264,14 +285,16 @@
 						{/if}
 
 						<!-- Cards de Tarjetas -->
-						{#each resumenTarjetas as tarjeta}
+						{#each resumenTarjetas as tarjeta (tarjeta.id_tarjeta)}
 							{@const saldo = presentarSaldo(tarjeta.saldo_usado)}
 							<button
 								type="button"
 								class="bg-white rounded-xl shadow-sm border-2 p-6 cursor-pointer hover:shadow-md transition text-left w-full"
 								class:border-gray-800={filtroTarjeta === tarjeta.id_tarjeta}
 								class:border-gray-200={filtroTarjeta !== tarjeta.id_tarjeta}
-								onclick={() => filtroTarjeta = filtroTarjeta === tarjeta.id_tarjeta ? null : tarjeta.id_tarjeta}
+								onclick={() =>
+									(filtroTarjeta =
+										filtroTarjeta === tarjeta.id_tarjeta ? null : tarjeta.id_tarjeta)}
 							>
 								<div class="flex items-start justify-between mb-4">
 									<div class="flex-1">
@@ -279,21 +302,35 @@
 										<p class="text-xs text-gray-500 mt-1">{tarjeta.banco || 'Sin banco'}</p>
 									</div>
 									<div class="bg-blue-100 rounded-full p-2">
-										<svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+										<svg
+											class="w-5 h-5 text-blue-700"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+											/>
 										</svg>
 									</div>
 								</div>
 
 								<div class="space-y-2">
 									<div>
-										<p class="text-2xl font-bold text-gray-900">{formatCurrency(parseFloat(tarjeta.total_gastado))}</p>
+										<p class="text-2xl font-bold text-gray-900">
+											{formatCurrency(parseFloat(tarjeta.total_gastado))}
+										</p>
 										<p class="text-xs text-gray-500">Total gastado</p>
 									</div>
 
 									<div class="grid grid-cols-2 gap-2 text-sm">
 										<div>
-											<p class="text-gray-600">{saldo.aFavor ? 'Saldo a favor:' : 'Saldo usado:'}</p>
+											<p class="text-gray-600">
+												{saldo.aFavor ? 'Saldo a favor:' : 'Saldo usado:'}
+											</p>
 											<p class="font-medium {saldo.aFavor ? 'text-green-600' : 'text-gray-900'}">
 												{formatCurrency(saldo.monto)}
 											</p>
@@ -301,7 +338,9 @@
 										<div>
 											<p class="text-gray-600">Disponible:</p>
 											<p class="font-medium text-green-600">
-												{formatCurrency(calcularDisponible(tarjeta.linea_credito, tarjeta.saldo_usado))}
+												{formatCurrency(
+													calcularDisponible(tarjeta.linea_credito, tarjeta.saldo_usado)
+												)}
 											</p>
 										</div>
 									</div>
@@ -315,7 +354,9 @@
 										<div class="bg-gray-50 rounded-lg p-2 mt-2">
 											<div class="flex justify-between text-xs">
 												<span class="text-gray-600">{tarjeta.msi_activas} MSI activas</span>
-												<span class="font-medium text-gray-900">{formatCurrency(parseFloat(tarjeta.cuotas_msi_mensuales))}/mes</span>
+												<span class="font-medium text-gray-900"
+													>{formatCurrency(parseFloat(tarjeta.cuotas_msi_mensuales))}/mes</span
+												>
 											</div>
 										</div>
 									{/if}
@@ -334,7 +375,7 @@
 					{#if filtroTarjeta !== null}
 						<div class="mt-4 text-center">
 							<button
-								onclick={() => filtroTarjeta = null}
+								onclick={() => (filtroTarjeta = null)}
 								class="text-sm text-gray-600 hover:text-gray-900 underline"
 							>
 								Mostrar todos los egresos
@@ -351,7 +392,8 @@
 						{#if filtroTarjeta === -1}
 							Egresos en Efectivo/Transferencia
 						{:else if filtroTarjeta}
-							Egresos de {resumenTarjetas.find(t => t.id_tarjeta === filtroTarjeta)?.nom_tarjeta || 'Tarjeta'}
+							Egresos de {resumenTarjetas.find((t) => t.id_tarjeta === filtroTarjeta)
+								?.nom_tarjeta || 'Tarjeta'}
 						{:else}
 							Todos los Egresos
 						{/if}
@@ -361,16 +403,28 @@
 					<table class="min-w-full divide-y divide-gray-200">
 						<thead class="bg-gray-50">
 							<tr>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Concepto</th>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Establecimiento</th>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Forma de Pago</th>
-								<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
-								<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+									>Fecha</th
+								>
+								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+									>Concepto</th
+								>
+								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+									>Establecimiento</th
+								>
+								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+									>Forma de Pago</th
+								>
+								<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase"
+									>Monto</th
+								>
+								<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase"
+									>Acciones</th
+								>
 							</tr>
 						</thead>
 						<tbody class="bg-white divide-y divide-gray-200">
-							{#each egresosFiltrados as egreso}
+							{#each egresosFiltrados as egreso (egreso.id_egreso)}
 								<tr class="hover:bg-gray-50">
 									<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
 										{formatDate(egreso.fecha_egreso)}
@@ -396,17 +450,21 @@
 												</span>
 											{/if}
 											{#if egreso.compra_meses}
-												<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-800 text-white w-fit">
+												<span
+													class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-800 text-white w-fit"
+												>
 													{egreso.num_meses} MSI
 												</span>
 											{/if}
 										</div>
 									</td>
-									<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+									<td
+										class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right"
+									>
 										{formatCurrency(parseFloat(egreso.monto))}
 										{#if egreso.compra_meses}
 											<p class="text-xs text-gray-500 font-normal">
-												{formatCurrency(parseFloat(egreso.monto_mensual))}/mes
+												{formatCurrency(parseFloat(egreso.monto_mensual ?? '0'))}/mes
 											</p>
 											<p class="text-xs text-gray-600 font-normal">
 												{egreso.meses_pagados}/{egreso.num_meses} pagados
@@ -416,13 +474,17 @@
 									<td class="px-6 py-4 whitespace-nowrap text-right text-sm">
 										<div class="flex justify-end gap-3">
 											<button
-												onclick={() => { handleEdit(egreso); }}
+												onclick={() => {
+													handleEdit(egreso);
+												}}
 												class="text-gray-600 hover:text-gray-900 font-medium"
 											>
 												Editar
 											</button>
 											<button
-												onclick={() => { handleDelete(egreso.id_egreso); }}
+												onclick={() => {
+													handleDelete(egreso.id_egreso);
+												}}
 												class="text-red-600 hover:text-red-900 font-medium"
 											>
 												Eliminar
@@ -454,17 +516,39 @@
 			<div class="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
 				<div class="p-6">
 					<div class="flex justify-between items-center mb-6">
-						<h2 class="text-2xl font-bold text-gray-900">{editingId ? 'Editar Egreso' : 'Nuevo Egreso'}</h2>
-						<button onclick={() => { showModal = false; editingId = null; }} class="text-gray-400 hover:text-gray-600" aria-label="Cerrar modal">
+						<h2 class="text-2xl font-bold text-gray-900">
+							{editingId ? 'Editar Egreso' : 'Nuevo Egreso'}
+						</h2>
+						<button
+							onclick={() => {
+								showModal = false;
+								editingId = null;
+							}}
+							class="text-gray-400 hover:text-gray-600"
+							aria-label="Cerrar modal"
+						>
 							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
 							</svg>
 						</button>
 					</div>
 
-					<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleSubmit();
+						}}
+						class="space-y-4"
+					>
 						<div>
-							<label for="concepto" class="block text-sm font-medium text-gray-700 mb-2">Concepto</label>
+							<label for="concepto" class="block text-sm font-medium text-gray-700 mb-2"
+								>Concepto</label
+							>
 							<input
 								id="concepto"
 								bind:value={formData.concepto}
@@ -475,7 +559,9 @@
 						</div>
 
 						<div>
-							<label for="establecimiento" class="block text-sm font-medium text-gray-700 mb-2">Establecimiento</label>
+							<label for="establecimiento" class="block text-sm font-medium text-gray-700 mb-2"
+								>Establecimiento</label
+							>
 							<input
 								id="establecimiento"
 								bind:value={formData.establecimiento}
@@ -498,7 +584,9 @@
 						</div>
 
 						<div>
-							<label for="forma_pago" class="block text-sm font-medium text-gray-700 mb-2">Forma de Pago</label>
+							<label for="forma_pago" class="block text-sm font-medium text-gray-700 mb-2"
+								>Forma de Pago</label
+							>
 							<select
 								id="forma_pago"
 								bind:value={formData.id_forma_pago}
@@ -506,7 +594,7 @@
 								class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-transparent"
 							>
 								<option value="">Seleccionar...</option>
-								{#each formasPago as forma}
+								{#each formasPago as forma (forma.id_forma_pago)}
 									<option value={String(forma.id_forma_pago)}>{forma.tipo}</option>
 								{/each}
 							</select>
@@ -514,15 +602,19 @@
 
 						{#if String(formData.id_forma_pago) === '2'}
 							<div>
-								<label for="tarjeta" class="block text-sm font-medium text-gray-700 mb-2">Tarjeta</label>
+								<label for="tarjeta" class="block text-sm font-medium text-gray-700 mb-2"
+									>Tarjeta</label
+								>
 								<select
 									id="tarjeta"
 									bind:value={formData.id_tarjeta}
 									class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-transparent"
 								>
 									<option value="">Ninguna</option>
-									{#each tarjetas as tarjeta}
-										<option value={String(tarjeta.id_tarjeta)}>{tarjeta.nom_tarjeta} - {tarjeta.banco}</option>
+									{#each tarjetas as tarjeta (tarjeta.id_tarjeta)}
+										<option value={String(tarjeta.id_tarjeta)}
+											>{tarjeta.nom_tarjeta} - {tarjeta.banco}</option
+										>
 									{/each}
 								</select>
 							</div>
@@ -567,7 +659,10 @@
 										</div>
 
 										<div>
-											<label for="mes_inicio_pago" class="block text-sm font-medium text-gray-700 mb-2">
+											<label
+												for="mes_inicio_pago"
+												class="block text-sm font-medium text-gray-700 mb-2"
+											>
 												¿Cuándo inicia el pago?
 											</label>
 											<select
@@ -594,12 +689,15 @@
 										{#if formData.num_meses && formData.monto}
 											<div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
 												<p class="text-sm font-medium text-gray-900">
-													Pago mensual: {formatCurrency(parseFloat(formData.monto) / parseInt(formData.num_meses))}
+													Pago mensual: {formatCurrency(
+														parseFloat(formData.monto) / parseInt(formData.num_meses)
+													)}
 												</p>
 												<p class="text-xs text-gray-600 mt-1">
 													{formData.num_meses} pagos mensuales
 													{#if parseInt(formData.mes_inicio_pago) > 0}
-														• Primer pago en {formData.mes_inicio_pago} {parseInt(formData.mes_inicio_pago) === 1 ? 'mes' : 'meses'}
+														• Primer pago en {formData.mes_inicio_pago}
+														{parseInt(formData.mes_inicio_pago) === 1 ? 'mes' : 'meses'}
 													{:else}
 														• Primer pago en el siguiente corte
 													{/if}
@@ -612,7 +710,9 @@
 						{/if}
 
 						<div>
-							<label for="fecha_egreso" class="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+							<label for="fecha_egreso" class="block text-sm font-medium text-gray-700 mb-2"
+								>Fecha</label
+							>
 							<input
 								id="fecha_egreso"
 								bind:value={formData.fecha_egreso}
@@ -623,7 +723,9 @@
 						</div>
 
 						<div>
-							<label for="descripcion" class="block text-sm font-medium text-gray-700 mb-2">Descripción (opcional)</label>
+							<label for="descripcion" class="block text-sm font-medium text-gray-700 mb-2"
+								>Descripción (opcional)</label
+							>
 							<textarea
 								id="descripcion"
 								bind:value={formData.descripcion}
@@ -636,7 +738,10 @@
 						<div class="flex space-x-3 pt-4">
 							<button
 								type="button"
-								onclick={() => { showModal = false; editingId = null; }}
+								onclick={() => {
+									showModal = false;
+									editingId = null;
+								}}
 								class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition"
 							>
 								Cancelar
@@ -654,6 +759,11 @@
 		</div>
 	{/if}
 
-	<ExportModal bind:show={showExportModal} onClose={() => { showExportModal = false; }} />
+	<ExportModal
+		bind:show={showExportModal}
+		onClose={() => {
+			showExportModal = false;
+		}}
+	/>
 	<Footer />
 </ProtectedRoute>

@@ -31,6 +31,22 @@ function obtenerToken(event: RequestEvent): string | undefined {
 	return event.cookies.get(cookieConfig.name);
 }
 
+/**
+ * ¿El error atrapado es en realidad una respuesta HTTP lista para devolver?
+ *
+ * `requireAuth` y `requireAdmin` no lanzan excepciones: lanzan la `Response`
+ * que hay que entregar al cliente (401 o 403). Los endpoints la atrapan y la
+ * devuelven tal cual.
+ *
+ * Comprobar `instanceof Response` en lugar de `error.status === 401` es más
+ * honesto y no se queda corto: la variante que solo miraba el 401 convertía en
+ * un 500 el 403 de `requireAdmin`, y había que acordarse de añadir el segundo
+ * código en cada endpoint de administración.
+ */
+export function esRespuestaDeAuth(error: unknown): error is Response {
+	return error instanceof Response;
+}
+
 export async function requireAuth(event: RequestEvent) {
 	const token = obtenerToken(event);
 

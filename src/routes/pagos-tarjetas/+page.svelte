@@ -3,19 +3,20 @@
 	import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
-	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost, apiDelete } from '$lib/utils/apiClient';
 	import { presentarSaldo } from '$lib/utils/saldo';
+	import { esSesionExpirada, mensajeDeError } from '$lib/utils/errores';
+	import type { Tarjeta, FormaPago, PagoTarjeta, CuotaMsi } from '$lib/tipos';
 
 	let loading = $state(true);
 	let loadingPagos = $state(true);
 	let loadingCuotasMSI = $state(false);
 	let error = $state('');
 	let success = $state('');
-	let tarjetas: any[] = $state([]);
-	let formasPago: any[] = $state([]);
-	let pagos: any[] = $state([]);
-	let cuotasMSI: any[] = $state([]);
+	let tarjetas: Tarjeta[] = $state([]);
+	let formasPago: FormaPago[] = $state([]);
+	let pagos: PagoTarjeta[] = $state([]);
+	let cuotasMSI: CuotaMsi[] = $state([]);
 	let cuotasMSISeleccionadas: number[] = $state([]);
 
 	let formData = $state({
@@ -28,8 +29,7 @@
 
 	async function loadTarjetas() {
 		try {
-			const token = $authStore.token;
-			const response = await apiGet('/api/tarjetas', token);
+			const response = await apiGet('/api/tarjetas');
 
 			if (!response.ok) {
 				throw new Error('Error al cargar tarjetas');
@@ -37,17 +37,16 @@
 
 			const data = await response.json();
 			tarjetas = data.tarjetas || [];
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
 
 	async function loadFormasPago() {
 		try {
-			const token = $authStore.token;
-			const response = await apiGet('/api/formas-pago', token);
+			const response = await apiGet('/api/formas-pago');
 
 			if (!response.ok) {
 				throw new Error('Error al cargar formas de pago');
@@ -55,29 +54,29 @@
 
 			const data = await response.json();
 			// Filtrar solo efectivo y transferencia (comparación case-insensitive)
-			formasPago = (data.formas_pago || []).filter((fp: any) =>
-				fp.tipo.toUpperCase() === 'EFECTIVO' || fp.tipo.toUpperCase() === 'TRANSFERENCIA'
+			formasPago = (data.formas_pago || []).filter(
+				(fp: FormaPago) =>
+					fp.tipo.toUpperCase() === 'EFECTIVO' || fp.tipo.toUpperCase() === 'TRANSFERENCIA'
 			);
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
 
 	async function loadPagos() {
 		try {
-			const token = $authStore.token;
-			const response = await apiGet('/api/pagos-tarjetas', token);
+			const response = await apiGet('/api/pagos-tarjetas');
 
 			if (!response.ok) {
 				throw new Error('Error al cargar pagos');
 			}
 
 			pagos = await response.json();
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		} finally {
 			loadingPagos = false;
@@ -93,8 +92,7 @@
 
 		try {
 			loadingCuotasMSI = true;
-			const token = $authStore.token;
-			const response = await apiGet(`/api/tarjetas/${idTarjeta}/cuotas-msi`, token);
+			const response = await apiGet(`/api/tarjetas/${idTarjeta}/cuotas-msi`);
 
 			if (!response.ok) {
 				throw new Error('Error al cargar cuotas MSI');
@@ -103,8 +101,8 @@
 			const data = await response.json();
 			cuotasMSI = data.cuotas_msi || [];
 			cuotasMSISeleccionadas = [];
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
 				console.error('Error al cargar cuotas MSI:', err);
 			}
 		} finally {
@@ -115,7 +113,7 @@
 	function toggleCuotaMSI(idEgreso: number) {
 		const index = cuotasMSISeleccionadas.indexOf(idEgreso);
 		if (index > -1) {
-			cuotasMSISeleccionadas = cuotasMSISeleccionadas.filter(id => id !== idEgreso);
+			cuotasMSISeleccionadas = cuotasMSISeleccionadas.filter((id) => id !== idEgreso);
 		} else {
 			cuotasMSISeleccionadas = [...cuotasMSISeleccionadas, idEgreso];
 		}
@@ -142,13 +140,12 @@
 		success = '';
 
 		try {
-			const token = $authStore.token;
 			const payload = {
 				...formData,
 				cuotas_msi_pagadas: cuotasMSISeleccionadas.length > 0 ? cuotasMSISeleccionadas : undefined
 			};
 
-			const response = await apiPost('/api/pagos-tarjetas', token, payload);
+			const response = await apiPost('/api/pagos-tarjetas', payload);
 
 			const data = await response.json();
 
@@ -181,9 +178,9 @@
 			setTimeout(() => {
 				success = '';
 			}, 3000);
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
@@ -194,8 +191,7 @@
 		}
 
 		try {
-			const token = $authStore.token;
-			const response = await apiDelete(`/api/pagos-tarjetas/${id}`, token);
+			const response = await apiDelete(`/api/pagos-tarjetas/${id}`);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -211,9 +207,9 @@
 			setTimeout(() => {
 				success = '';
 			}, 3000);
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
@@ -275,7 +271,7 @@
 									class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
 								>
 									<option value="">Selecciona una tarjeta</option>
-									{#each tarjetas as tarjeta}
+									{#each tarjetas as tarjeta (tarjeta.id_tarjeta)}
 										{@const saldo = presentarSaldo(tarjeta.saldo_usado)}
 										<option value={tarjeta.id_tarjeta}>
 											{tarjeta.nom_tarjeta} - {tarjeta.banco || 'Sin banco'}
@@ -325,7 +321,7 @@
 									class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
 								>
 									<option value="">Selecciona forma de pago</option>
-									{#each formasPago as forma}
+									{#each formasPago as forma (forma.id_forma_pago)}
 										<option value={forma.id_forma_pago}>
 											{forma.tipo.charAt(0).toUpperCase() + forma.tipo.slice(1)}
 										</option>
@@ -352,17 +348,22 @@
 						{#if formData.id_tarjeta}
 							<div class="border-t pt-4">
 								<div class="flex items-center justify-between mb-3">
-									<h3 class="text-sm font-semibold text-gray-900">¿Este pago incluye cuotas a Meses Sin Intereses?</h3>
+									<h3 class="text-sm font-semibold text-gray-900">
+										¿Este pago incluye cuotas a Meses Sin Intereses?
+									</h3>
 									{#if loadingCuotasMSI}
 										<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-800"></div>
 									{/if}
 								</div>
 
 								{#if cuotasMSI.length > 0}
-									<p class="text-xs text-gray-600 mb-3">Selecciona las compras MSI que estás pagando este mes:</p>
+									<p class="text-xs text-gray-600 mb-3">
+										Selecciona las compras MSI que estás pagando este mes:
+									</p>
 									<div class="space-y-2 max-h-60 overflow-y-auto">
-										{#each cuotasMSI as cuota}
-											<label class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+										{#each cuotasMSI as cuota (cuota.id_egreso)}
+											<label
+												class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
 												class:bg-blue-50={cuotasMSISeleccionadas.includes(cuota.id_egreso)}
 												class:border-blue-300={cuotasMSISeleccionadas.includes(cuota.id_egreso)}
 												class:border-gray-200={!cuotasMSISeleccionadas.includes(cuota.id_egreso)}
@@ -388,7 +389,9 @@
 																	Progreso: {cuota.meses_pagados}/{cuota.num_meses}
 																</span>
 																<span class="text-xs text-gray-600">
-																	Pendiente: {formatCurrency(parseFloat(cuota.monto_pendiente))}
+																	Pendiente: {formatCurrency(
+																		parseFloat(cuota.monto_pendiente ?? '0')
+																	)}
 																</span>
 															</div>
 														</div>
@@ -410,19 +413,23 @@
 									{#if cuotasMSISeleccionadas.length > 0}
 										<div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
 											<p class="text-sm font-medium text-blue-900">
-												{cuotasMSISeleccionadas.length} cuota{cuotasMSISeleccionadas.length > 1 ? 's' : ''} seleccionada{cuotasMSISeleccionadas.length > 1 ? 's' : ''}
+												{cuotasMSISeleccionadas.length} cuota{cuotasMSISeleccionadas.length > 1
+													? 's'
+													: ''} seleccionada{cuotasMSISeleccionadas.length > 1 ? 's' : ''}
 											</p>
 											<p class="text-xs text-blue-700 mt-1">
 												Total MSI incluido: {formatCurrency(
 													cuotasMSI
-														.filter(c => cuotasMSISeleccionadas.includes(c.id_egreso))
+														.filter((c) => cuotasMSISeleccionadas.includes(c.id_egreso))
 														.reduce((sum, c) => sum + parseFloat(c.monto_mensual), 0)
 												)}
 											</p>
 										</div>
 									{/if}
 								{:else if !loadingCuotasMSI}
-									<p class="text-sm text-gray-500 italic">No hay compras MSI pendientes para esta tarjeta</p>
+									<p class="text-sm text-gray-500 italic">
+										No hay compras MSI pendientes para esta tarjeta
+									</p>
 								{/if}
 							</div>
 						{/if}
@@ -451,17 +458,38 @@
 							<table class="min-w-full divide-y divide-gray-200">
 								<thead class="bg-gray-50">
 									<tr>
-										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarjeta</th>
-										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Banco</th>
-										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Forma de Pago</th>
-										<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-										<th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+											>Fecha</th
+										>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+											>Tarjeta</th
+										>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+											>Banco</th
+										>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+											>Forma de Pago</th
+										>
+										<th
+											class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+											>Monto</th
+										>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+											>Descripción</th
+										>
+										<th
+											class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+											>Acciones</th
+										>
 									</tr>
 								</thead>
 								<tbody class="bg-white divide-y divide-gray-200">
-									{#each pagos as pago}
+									{#each pagos as pago (pago.id_pago)}
 										<tr>
 											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
 												{formatDate(pago.fecha_pago)}
@@ -475,7 +503,9 @@
 											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
 												<span class="capitalize">{pago.forma_pago}</span>
 											</td>
-											<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 text-right">
+											<td
+												class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 text-right"
+											>
 												{formatCurrency(parseFloat(pago.monto))}
 											</td>
 											<td class="px-6 py-4 text-sm text-gray-500">
@@ -487,8 +517,18 @@
 													class="text-red-600 hover:text-red-800"
 													title="Eliminar pago"
 												>
-													<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+													<svg
+														class="w-5 h-5"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+														/>
 													</svg>
 												</button>
 											</td>

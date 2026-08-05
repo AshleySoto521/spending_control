@@ -3,9 +3,19 @@
 	import { goto } from '$app/navigation';
 	import { apiGet, apiPost } from '$lib/utils/apiClient';
 
+	interface Aviso {
+		id_notificacion: number;
+		tipo: string;
+		titulo: string;
+		cuerpo: string | null;
+		enlace: string | null;
+		leida: boolean;
+		fecha_creacion: string;
+	}
+
 	let abierto = $state(false);
 	let cargando = $state(true);
-	let notificaciones: any[] = $state([]);
+	let notificaciones: Aviso[] = $state([]);
 	let sinLeer = $state(0);
 
 	async function cargar() {
@@ -24,7 +34,7 @@
 		}
 	}
 
-	async function abrirAviso(aviso: any) {
+	async function abrirAviso(aviso: Aviso) {
 		abierto = false;
 
 		if (!aviso.leida) {
@@ -32,7 +42,7 @@
 			// navegación ocurre inmediatamente después.
 			aviso.leida = true;
 			sinLeer = Math.max(0, sinLeer - 1);
-			apiPost('/api/notificaciones', null, { id: aviso.id_notificacion }).catch(() => {});
+			apiPost('/api/notificaciones', { id: aviso.id_notificacion }).catch(() => {});
 		}
 
 		if (aviso.enlace) goto(aviso.enlace);
@@ -41,7 +51,7 @@
 	async function marcarTodas() {
 		notificaciones = notificaciones.map((n) => ({ ...n, leida: true }));
 		sinLeer = 0;
-		await apiPost('/api/notificaciones', null, {}).catch(() => {});
+		await apiPost('/api/notificaciones', {}).catch(() => {});
 	}
 
 	function haceCuanto(fecha: string): string {
@@ -51,15 +61,34 @@
 		return `hace ${dias} días`;
 	}
 
+	/**
+	 * Cierre al hacer clic fuera y con Escape.
+	 *
+	 * Se comprueba si el clic cayó dentro del contenedor, en vez de detener la
+	 * propagación desde el panel. Detenerla obligaba a poner un manejador de
+	 * clic sobre un `div` que no es interactivo, algo que ningún lector de
+	 * pantalla puede anunciar y que además rompía cualquier otro cierre por
+	 * clic global de la página.
+	 */
+	let contenedor: HTMLElement | undefined = $state();
+
+	function alHacerClicFuera(evento: MouseEvent) {
+		if (!abierto) return;
+		if (contenedor && !contenedor.contains(evento.target as Node)) abierto = false;
+	}
+
+	function alPulsarTecla(evento: KeyboardEvent) {
+		if (evento.key === 'Escape') abierto = false;
+	}
+
 	onMount(cargar);
 </script>
 
-<div class="relative dropdown-container">
+<svelte:window onclick={alHacerClicFuera} onkeydown={alPulsarTecla} />
+
+<div class="relative dropdown-container" bind:this={contenedor}>
 	<button
-		onclick={(e) => {
-			e.stopPropagation();
-			abierto = !abierto;
-		}}
+		onclick={() => (abierto = !abierto)}
 		class="relative flex items-center justify-center h-10 w-10 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
 		aria-label={sinLeer > 0 ? `Notificaciones, ${sinLeer} sin leer` : 'Notificaciones'}
 	>
@@ -82,10 +111,10 @@
 	</button>
 
 	{#if abierto}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
-			onclick={(e) => e.stopPropagation()}
+			role="menu"
+			aria-label="Notificaciones"
 		>
 			<div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
 				<span class="font-semibold text-gray-900">Notificaciones</span>

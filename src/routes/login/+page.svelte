@@ -66,9 +66,9 @@
 				localStorage.setItem(SAVED_EMAIL_KEY, email);
 			}
 
-			authStore.login(data.user, data.token);
+			authStore.login(data.user);
 			goto('/dashboard');
-		} catch (err) {
+		} catch {
 			error = 'Error de conexión';
 		} finally {
 			loading = false;
@@ -80,8 +80,17 @@
 	<div class="max-w-md w-full card p-8">
 		<div class="mb-6">
 			<a href="/" class="text-gray-600 hover:text-gray-900 flex items-center gap-2 text-sm">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-					<path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+				>
+					<path
+						fill-rule="evenodd"
+						d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+						clip-rule="evenodd"
+					/>
 				</svg>
 				Volver al inicio
 			</a>
@@ -91,7 +100,13 @@
 			<p class="text-gray-500">Inicia sesión en tu cuenta</p>
 		</div>
 
-		<form onsubmit={(e) => { e.preventDefault(); handleLogin(); }} class="space-y-6">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleLogin();
+			}}
+			class="space-y-6"
+		>
 			{#if error}
 				<div class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg">
 					{error}
@@ -99,9 +114,7 @@
 			{/if}
 
 			<div>
-				<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-					Email
-				</label>
+				<label for="email" class="block text-sm font-medium text-gray-700 mb-2"> Email </label>
 				{#if !showEmailField && savedEmail}
 					<!-- Mostrar el correo guardado -->
 					<div class="input-minimal bg-gray-50 flex items-center justify-between">

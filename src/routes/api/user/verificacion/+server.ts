@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { estadoVerificacion, generarTokenVerificacion } from '$lib/server/verificacion';
 import { sendVerificacionEmail } from '$lib/server/email';
 import { registrarLog } from '$lib/server/security';
@@ -18,8 +18,8 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		return json({ verificado: estado.verificado, email: estado.email });
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al consultar la verificación:', error);
 		return json({ error: 'Error al consultar el estado' }, { status: 500 });
 	}
@@ -42,12 +42,14 @@ export const POST: RequestHandler = async (event) => {
 			return json({ success: true, yaVerificado: true });
 		}
 
-		const nombre = (
-			await query('SELECT nombre FROM usuarios WHERE id_usuario = $1', [userId])
-		).rows[0]?.nombre;
+		const nombre = (await query('SELECT nombre FROM usuarios WHERE id_usuario = $1', [userId]))
+			.rows[0]?.nombre;
 
 		const token = await generarTokenVerificacion(userId);
-		const appUrl = String(env.APP_URL ?? '').split('#')[0].trim() || 'http://localhost:5173';
+		const appUrl =
+			String(env.APP_URL ?? '')
+				.split('#')[0]
+				.trim() || 'http://localhost:5173';
 
 		const resultado = await sendVerificacionEmail(
 			estado.email,
@@ -65,8 +67,8 @@ export const POST: RequestHandler = async (event) => {
 		});
 
 		return json({ success: true });
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al reenviar la verificación:', error);
 		return json({ error: 'Error al reenviar el correo' }, { status: 500 });
 	}

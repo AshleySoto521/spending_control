@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { getClient } from '$lib/server/db';
 import { query } from '$lib/server/db';
 import { verifyPassword } from '$lib/server/auth';
@@ -59,8 +59,7 @@ export const POST: RequestHandler = async (event) => {
 			if (admins.rows[0].total <= 1) {
 				return json(
 					{
-						error:
-							'Eres la única cuenta administradora. Nombra a otra antes de eliminar la tuya.'
+						error: 'Eres la única cuenta administradora. Nombra a otra antes de eliminar la tuya.'
 					},
 					{ status: 409 }
 				);
@@ -102,8 +101,8 @@ export const POST: RequestHandler = async (event) => {
 		event.cookies.delete(cookieConfig.name, { path: cookieConfig.path });
 
 		return json({ success: true });
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al eliminar la cuenta:', error);
 		return json({ error: 'Error al eliminar la cuenta' }, { status: 500 });
 	}

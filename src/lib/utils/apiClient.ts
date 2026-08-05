@@ -50,11 +50,7 @@ export async function apiClient(url: string, options: RequestInit = {}): Promise
 			const data = await response.json().catch(() => ({}) as Record<string, string>);
 			const mensaje = (data?.error ?? '').toLowerCase();
 
-			if (
-				mensaje.includes('token') ||
-				mensaje.includes('sesión') ||
-				mensaje.includes('sesion')
-			) {
+			if (mensaje.includes('token') || mensaje.includes('sesión') || mensaje.includes('sesion')) {
 				sessionStore.showSessionExpired('expired');
 				throw new Error(data?.error || 'Sesión expirada');
 			}
@@ -71,14 +67,19 @@ export async function apiClient(url: string, options: RequestInit = {}): Promise
 }
 
 /**
- * Los helpers conservan el segundo parámetro `token` por compatibilidad con
- * las páginas existentes, pero ya no se usa: la cookie httpOnly lo sustituye.
+ * Atajos por verbo. No reciben ningún token: la autenticación viaja en la
+ * cookie httpOnly `auth_token`, que el navegador adjunta solo.
+ *
+ * Antes aceptaban un segundo parámetro `token` que se ignoraba, herencia de
+ * cuando el JWT vivía en localStorage. Mantenerlo daba a entender que la
+ * página gestionaba credenciales, y obligaba a arrastrar en cada función una
+ * variable que no hacía nada.
  */
-export async function apiGet(url: string, _token?: string | null) {
+export async function apiGet(url: string) {
 	return apiClient(url, { method: 'GET' });
 }
 
-export async function apiPost(url: string, _token: string | null, body: any) {
+export async function apiPost(url: string, body: unknown) {
 	return apiClient(url, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -86,7 +87,7 @@ export async function apiPost(url: string, _token: string | null, body: any) {
 	});
 }
 
-export async function apiPut(url: string, _token: string | null, body: any) {
+export async function apiPut(url: string, body: unknown) {
 	return apiClient(url, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
@@ -94,6 +95,6 @@ export async function apiPut(url: string, _token: string | null, body: any) {
 	});
 }
 
-export async function apiDelete(url: string, _token?: string | null) {
+export async function apiDelete(url: string) {
 	return apiClient(url, { method: 'DELETE' });
 }

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero } from '$lib/server/validacion';
 
 // PATCH - Actualizar meses pagados de una compra MSI
@@ -52,8 +52,8 @@ export const PATCH: RequestHandler = async (event) => {
 		);
 
 		return json({ success: true, egreso: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al actualizar meses pagados:', error);
@@ -87,10 +87,7 @@ export const POST: RequestHandler = async (event) => {
 		const nuevosMesesPagados = (meses_pagados || 0) + 1;
 
 		if (nuevosMesesPagados > num_meses) {
-			return json(
-				{ error: 'Ya se pagaron todas las cuotas' },
-				{ status: 400 }
-			);
+			return json({ error: 'Ya se pagaron todas las cuotas' }, { status: 400 });
 		}
 
 		// Incrementar meses pagados
@@ -103,8 +100,8 @@ export const POST: RequestHandler = async (event) => {
 		);
 
 		return json({ success: true, egreso: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al incrementar meses pagados:', error);

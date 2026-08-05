@@ -73,7 +73,10 @@ export const POST: RequestHandler = async (event) => {
 		});
 
 		// Generar link de recuperación
-		const appUrl = String(env.APP_URL ?? '').split('#')[0].trim() || 'http://localhost:5173';
+		const appUrl =
+			String(env.APP_URL ?? '')
+				.split('#')[0]
+				.trim() || 'http://localhost:5173';
 		const resetLink = `${appUrl}/reset-password?token=${resetToken}`;
 
 		// Enviar email de recuperación.

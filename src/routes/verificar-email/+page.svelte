@@ -44,13 +44,14 @@
 <div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
 	<div class="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
 		{#if estado === 'verificando'}
-			<div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-800 mx-auto mb-4"></div>
+			<div
+				class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-800 mx-auto mb-4"
+			></div>
 			<p class="text-gray-600">Confirmando tu correo…</p>
 		{:else if estado === 'listo'}
 			<h1 class="text-2xl font-bold text-gray-900 mb-3">Correo confirmado</h1>
 			<p class="text-gray-700 mb-6">
-				Listo. Si alguna vez olvidas tu contraseña, podremos devolverte el acceso a
-				esta dirección.
+				Listo. Si alguna vez olvidas tu contraseña, podremos devolverte el acceso a esta dirección.
 			</p>
 			<a
 				href="/dashboard"
@@ -62,8 +63,8 @@
 			<h1 class="text-2xl font-bold text-gray-900 mb-3">No pudimos confirmarlo</h1>
 			<p class="text-gray-700 mb-2">{mensaje}</p>
 			<p class="text-sm text-gray-600 mb-6">
-				Los enlaces caducan a las 48 horas y solo sirven una vez. Puedes pedir uno nuevo
-				desde tu perfil.
+				Los enlaces caducan a las 48 horas y solo sirven una vez. Puedes pedir uno nuevo desde tu
+				perfil.
 			</p>
 			<a href="/perfil" class="text-gray-900 font-semibold hover:underline">Ir a mi perfil</a>
 		{/if}

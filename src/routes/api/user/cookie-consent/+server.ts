@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 
 // POST - Guardar o actualizar el consentimiento de cookies
 export const POST: RequestHandler = async (event) => {
@@ -10,7 +10,11 @@ export const POST: RequestHandler = async (event) => {
 		const { analytics, marketing, preferences, consentDate } = await event.request.json();
 
 		// Validación básica
-		if (typeof analytics !== 'boolean' || typeof marketing !== 'boolean' || typeof preferences !== 'boolean') {
+		if (
+			typeof analytics !== 'boolean' ||
+			typeof marketing !== 'boolean' ||
+			typeof preferences !== 'boolean'
+		) {
 			return json({ error: 'Los valores de consentimiento deben ser booleanos' }, { status: 400 });
 		}
 
@@ -35,8 +39,8 @@ export const POST: RequestHandler = async (event) => {
 			success: true,
 			message: 'Consentimiento de cookies guardado exitosamente'
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al guardar consentimiento de cookies:', error);
@@ -73,8 +77,8 @@ export const GET: RequestHandler = async (event) => {
 			consentDate: consent.cookie_consent_date,
 			consentGiven: !!consent.cookie_consent_date
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener consentimiento de cookies:', error);

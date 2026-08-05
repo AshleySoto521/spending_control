@@ -29,7 +29,7 @@
 			if (data.resetLink) {
 				resetLink = data.resetLink;
 			}
-		} catch (err) {
+		} catch {
 			error = 'Error de conexión';
 		} finally {
 			loading = false;
@@ -44,7 +44,13 @@
 			<p class="text-gray-500">Ingresa tu email para recuperar tu cuenta</p>
 		</div>
 
-		<form onsubmit={(e) => { e.preventDefault(); handleForgotPassword(); }} class="space-y-6">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleForgotPassword();
+			}}
+			class="space-y-6"
+		>
 			{#if error}
 				<div class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg">
 					{error}
@@ -57,7 +63,10 @@
 					{#if resetLink}
 						<div class="mt-3 p-2 bg-white rounded border border-gray-300">
 							<p class="text-xs font-semibold mb-1 text-gray-900">Link de desarrollo:</p>
-							<a href={resetLink} class="text-xs text-gray-600 hover:text-gray-900 hover:underline break-all">
+							<a
+								href={resetLink}
+								class="text-xs text-gray-600 hover:text-gray-900 hover:underline break-all"
+							>
 								{resetLink}
 							</a>
 						</div>
@@ -66,9 +75,7 @@
 			{/if}
 
 			<div>
-				<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-					Email
-				</label>
+				<label for="email" class="block text-sm font-medium text-gray-700 mb-2"> Email </label>
 				<input
 					id="email"
 					type="email"

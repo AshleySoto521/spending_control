@@ -4,8 +4,8 @@
 	import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
-	import { authStore } from '$lib/stores/auth';
 	import { apiGet } from '$lib/utils/apiClient';
+	import { esSesionExpirada, mensajeDeError } from '$lib/utils/errores';
 
 	interface PagoPendiente {
 		id_tarjeta: number;
@@ -54,18 +54,20 @@
 
 	function saveConfiguracion() {
 		if (browser) {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({
-				dia_primer_pago: diaPrimerPago,
-				dia_segundo_pago: diaSegundoPago
-			}));
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify({
+					dia_primer_pago: diaPrimerPago,
+					dia_segundo_pago: diaSegundoPago
+				})
+			);
 		}
 		configurando = false;
 	}
 
 	async function loadDatos() {
 		try {
-			const token = $authStore.token;
-			const response = await apiGet('/api/proyeccion', token);
+			const response = await apiGet('/api/proyeccion');
 
 			if (!response.ok) {
 				throw new Error('Error al cargar datos de proyección');
@@ -75,9 +77,9 @@
 			saldoActual = data.saldo_actual || 0;
 			pagosPendientes = data.pagos_pendientes || [];
 			prestamosPendientes = data.prestamos_pendientes || [];
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		} finally {
 			loading = false;
@@ -93,7 +95,7 @@
 		const inicioPeriodo = new Date(anioActual, mesActual, 1);
 		const finPeriodo = new Date(anioActual, mesActual, diaPrimerPago);
 
-		return pagosPendientes.filter(pago => {
+		return pagosPendientes.filter((pago) => {
 			const fechaLimite = new Date(pago.fecha_limite_pago);
 			return fechaLimite >= inicioPeriodo && fechaLimite <= finPeriodo;
 		});
@@ -107,18 +109,18 @@
 		const inicioPeriodo = new Date(anioActual, mesActual, diaPrimerPago + 1);
 		const finPeriodo = new Date(anioActual, mesActual + 1, 0); // Último día del mes
 
-		return pagosPendientes.filter(pago => {
+		return pagosPendientes.filter((pago) => {
 			const fechaLimite = new Date(pago.fecha_limite_pago);
 			return fechaLimite >= inicioPeriodo && fechaLimite <= finPeriodo;
 		});
 	}
 
 	function getPrestamosPrimeraQuincena(): PrestamoPendiente[] {
-		return prestamosPendientes.filter(prestamo => prestamo.dia_pago <= diaPrimerPago);
+		return prestamosPendientes.filter((prestamo) => prestamo.dia_pago <= diaPrimerPago);
 	}
 
 	function getPrestamosSegundaQuincena(): PrestamoPendiente[] {
-		return prestamosPendientes.filter(prestamo => prestamo.dia_pago > diaPrimerPago);
+		return prestamosPendientes.filter((prestamo) => prestamo.dia_pago > diaPrimerPago);
 	}
 
 	function getTotalPagos(pagos: PagoPendiente[]): number {
@@ -152,10 +154,18 @@
 	let pagosSegundaQuincena = $derived(getPagosSegundaQuincena());
 	let prestamosPrimeraQuincena = $derived(getPrestamosPrimeraQuincena());
 	let prestamosSegundaQuincena = $derived(getPrestamosSegundaQuincena());
-	let totalPrimeraQuincena = $derived(getTotalPagos(pagosPrimeraQuincena) + getTotalPrestamos(prestamosPrimeraQuincena));
-	let totalSegundaQuincena = $derived(getTotalPagos(pagosSegundaQuincena) + getTotalPrestamos(prestamosSegundaQuincena));
-	let saldoPrimeraQuincena = $derived(getSaldoProyectado(pagosPrimeraQuincena, prestamosPrimeraQuincena));
-	let saldoSegundaQuincena = $derived(getSaldoProyectado(pagosSegundaQuincena, prestamosSegundaQuincena));
+	let totalPrimeraQuincena = $derived(
+		getTotalPagos(pagosPrimeraQuincena) + getTotalPrestamos(prestamosPrimeraQuincena)
+	);
+	let totalSegundaQuincena = $derived(
+		getTotalPagos(pagosSegundaQuincena) + getTotalPrestamos(prestamosSegundaQuincena)
+	);
+	let saldoPrimeraQuincena = $derived(
+		getSaldoProyectado(pagosPrimeraQuincena, prestamosPrimeraQuincena)
+	);
+	let saldoSegundaQuincena = $derived(
+		getSaldoProyectado(pagosSegundaQuincena, prestamosSegundaQuincena)
+	);
 </script>
 
 <ProtectedRoute>
@@ -172,10 +182,7 @@
 							Simula tus pagos de tarjetas y proyecta tu saldo al final de cada quincena
 						</p>
 					</div>
-					<button
-						onclick={() => configurando = !configurando}
-						class="btn-secondary"
-					>
+					<button onclick={() => (configurando = !configurando)} class="btn-secondary">
 						⚙️ Configurar Días de Pago
 					</button>
 				</div>
@@ -210,9 +217,7 @@
 									max="31"
 									class="input-minimal"
 								/>
-								<p class="mt-1 text-xs text-gray-500">
-									Ejemplo: Si te pagan el 15, ingresa 15
-								</p>
+								<p class="mt-1 text-xs text-gray-500">Ejemplo: Si te pagan el 15, ingresa 15</p>
 							</div>
 							<div>
 								<label for="dia_segundo_pago" class="block text-sm font-medium text-gray-700 mb-2">
@@ -235,9 +240,7 @@
 							<button onclick={saveConfiguracion} class="btn-primary">
 								Guardar Configuración
 							</button>
-							<button onclick={() => configurando = false} class="btn-ghost">
-								Cancelar
-							</button>
+							<button onclick={() => (configurando = false)} class="btn-ghost"> Cancelar </button>
 						</div>
 					</div>
 				{/if}
@@ -252,13 +255,24 @@
 							</p>
 						</div>
 						<div class="bg-gray-100 rounded-full p-4">
-							<svg class="w-8 h-8 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+							<svg
+								class="w-8 h-8 text-gray-800"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
 							</svg>
 						</div>
 					</div>
 					<p class="mt-4 text-sm text-gray-500">
-						Este es tu saldo disponible después de considerar ingresos, egresos y pagos de tarjetas realizados.
+						Este es tu saldo disponible después de considerar ingresos, egresos y pagos de tarjetas
+						realizados.
 					</p>
 				</div>
 
@@ -267,9 +281,7 @@
 					<!-- Primera Quincena -->
 					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
 						<div class="flex items-center justify-between mb-4">
-							<h2 class="text-xl font-bold text-gray-900">
-								Primera Quincena
-							</h2>
+							<h2 class="text-xl font-bold text-gray-900">Primera Quincena</h2>
 							<span class="text-sm text-gray-500">
 								Día 1 al {diaPrimerPago}
 							</span>
@@ -282,7 +294,7 @@
 						{:else}
 							<div class="space-y-3 mb-4">
 								<p class="text-sm font-medium text-gray-600">Pagos a realizar:</p>
-								{#each pagosPrimeraQuincena as pago}
+								{#each pagosPrimeraQuincena as pago (pago.id_tarjeta)}
 									<div class="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
 										<div class="flex-1">
 											<p class="font-medium text-gray-900">{pago.nom_tarjeta}</p>
@@ -327,9 +339,7 @@
 					<!-- Segunda Quincena -->
 					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
 						<div class="flex items-center justify-between mb-4">
-							<h2 class="text-xl font-bold text-gray-900">
-								Segunda Quincena
-							</h2>
+							<h2 class="text-xl font-bold text-gray-900">Segunda Quincena</h2>
 							<span class="text-sm text-gray-500">
 								Día {diaPrimerPago + 1} al {diaSegundoPago}
 							</span>
@@ -342,7 +352,7 @@
 						{:else}
 							<div class="space-y-3 mb-4">
 								<p class="text-sm font-medium text-gray-600">Pagos a realizar:</p>
-								{#each pagosSegundaQuincena as pago}
+								{#each pagosSegundaQuincena as pago (pago.id_tarjeta)}
 									<div class="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
 										<div class="flex-1">
 											<p class="font-medium text-gray-900">{pago.nom_tarjeta}</p>
@@ -388,15 +398,23 @@
 				<!-- Información adicional -->
 				<div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
 					<div class="flex">
-						<svg class="w-5 h-5 text-blue-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-							<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+						<svg
+							class="w-5 h-5 text-blue-400 mt-0.5 shrink-0"
+							fill="currentColor"
+							viewBox="0 0 20 20"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+								clip-rule="evenodd"
+							/>
 						</svg>
 						<div class="ml-3">
 							<h3 class="text-sm font-medium text-blue-800">Acerca de esta proyección</h3>
 							<div class="mt-2 text-sm text-blue-700">
 								<p>
-									Esta proyección te ayuda a planificar tus finanzas mostrándote cuánto dinero tendrás
-									después de pagar tus tarjetas en cada quincena. Los cálculos se basan en:
+									Esta proyección te ayuda a planificar tus finanzas mostrándote cuánto dinero
+									tendrás después de pagar tus tarjetas en cada quincena. Los cálculos se basan en:
 								</p>
 								<ul class="list-disc list-inside mt-2 space-y-1">
 									<li>Tu saldo actual (ingresos - egresos - pagos realizados)</li>
@@ -404,8 +422,8 @@
 									<li>La configuración de tus días de pago</li>
 								</ul>
 								<p class="mt-2">
-									<strong>Nota:</strong> Esta es una simulación. Los valores reales pueden variar
-									según nuevos ingresos, gastos o pagos que realices.
+									<strong>Nota:</strong> Esta es una simulación. Los valores reales pueden variar según
+									nuevos ingresos, gastos o pagos que realices.
 								</p>
 							</div>
 						</div>

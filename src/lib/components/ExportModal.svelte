@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { authStore } from '$lib/stores/auth';
+	import { mensajeDeError } from '$lib/utils/errores';
 
 	interface Props {
 		show: boolean;
@@ -40,7 +40,6 @@
 			loading = true;
 			error = '';
 
-			const token = $authStore.token;
 			const response = await fetch(
 				`/api/exportar?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`,
 				{
@@ -66,8 +65,8 @@
 
 			// Cerrar modal
 			onClose();
-		} catch (err: any) {
-			error = err.message;
+		} catch (err) {
+			error = mensajeDeError(err);
 		} finally {
 			loading = false;
 		}
@@ -254,11 +253,7 @@
 							class="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center"
 						>
 							{#if loading}
-								<svg
-									class="animate-spin h-5 w-5 text-white mr-2"
-									fill="none"
-									viewBox="0 0 24 24"
-								>
+								<svg class="animate-spin h-5 w-5 text-white mr-2" fill="none" viewBox="0 0 24 24">
 									<circle
 										class="opacity-25"
 										cx="12"

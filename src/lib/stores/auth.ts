@@ -75,11 +75,7 @@ function createAuthStore() {
 
 	return {
 		subscribe,
-		/**
-		 * `_token` se mantiene en la firma por compatibilidad con las llamadas
-		 * existentes, pero se ignora deliberadamente.
-		 */
-		login: (user: User, _token?: string | null) => {
+		login: (user: User) => {
 			if (browser) {
 				localStorage.setItem(CLAVE_USUARIO, JSON.stringify(user));
 				localStorage.removeItem('token');

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { leerPaginacion } from '$lib/server/paginacion';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 
 // GET - Obtener todos los ingresos del usuario
 export const GET: RequestHandler = async (event) => {
@@ -44,8 +44,8 @@ export const GET: RequestHandler = async (event) => {
 			limit,
 			offset
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener ingresos:', error);
@@ -62,10 +62,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Validaciones
 		if (!tipo_ingreso || !monto || !id_forma_pago || !fecha_ingreso) {
-			return json(
-				{ error: 'Tipo, monto, forma de pago y fecha son requeridos' },
-				{ status: 400 }
-			);
+			return json({ error: 'Tipo, monto, forma de pago y fecha son requeridos' }, { status: 400 });
 		}
 
 		if (monto <= 0) {
@@ -81,8 +78,8 @@ export const POST: RequestHandler = async (event) => {
 		);
 
 		return json({ success: true, ingreso: result.rows[0] }, { status: 201 });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al crear ingreso:', error);

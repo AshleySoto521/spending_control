@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { cookieConfig } from '$lib/server/cookies';
 import { listarSesiones } from '$lib/server/security';
 import { describirDispositivo } from '$lib/utils/dispositivo';
@@ -28,8 +28,8 @@ export const GET: RequestHandler = async (event) => {
 				esActual: sesion.esActual
 			}))
 		});
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al listar sesiones:', error);
 		return json({ error: 'Error al obtener las sesiones' }, { status: 500 });
 	}

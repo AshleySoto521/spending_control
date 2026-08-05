@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { leerPaginacion } from '$lib/server/paginacion';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 
 // GET - Obtener todos los egresos del usuario
 export const GET: RequestHandler = async (event) => {
@@ -43,10 +43,9 @@ export const GET: RequestHandler = async (event) => {
 			[userId, limit, offset]
 		);
 
-		const countResult = await query(
-			'SELECT COUNT(*) as total FROM egresos WHERE id_usuario = $1',
-			[userId]
-		);
+		const countResult = await query('SELECT COUNT(*) as total FROM egresos WHERE id_usuario = $1', [
+			userId
+		]);
 
 		return json({
 			egresos: result.rows,
@@ -54,8 +53,8 @@ export const GET: RequestHandler = async (event) => {
 			limit,
 			offset
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener egresos:', error);
@@ -134,15 +133,15 @@ export const POST: RequestHandler = async (event) => {
 				descripcion || null,
 				compra_meses || false,
 				compra_meses ? num_meses : null,
-				compra_meses ? (mes_inicio_pago || 0) : null,
+				compra_meses ? mes_inicio_pago || 0 : null,
 				montoMensual,
 				0
 			]
 		);
 
 		return json({ success: true, egreso: result.rows[0] }, { status: 201 });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al crear egreso:', error);

@@ -31,7 +31,9 @@ const EVENTOS_OPERATIVOS = [
 ];
 
 function diasDeEntorno(valor: string | undefined, porDefecto: number): number {
-	const limpio = String(valor ?? '').split('#')[0].trim();
+	const limpio = String(valor ?? '')
+		.split('#')[0]
+		.trim();
 	const numero = Number.parseInt(limpio, 10);
 	return Number.isSafeInteger(numero) && numero > 0 ? numero : porDefecto;
 }

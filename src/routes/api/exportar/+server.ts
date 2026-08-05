@@ -1,9 +1,43 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { fechaISO, nombreArchivoSeguro } from '$lib/server/validacion';
 import * as XLSX from 'xlsx';
+
+/** Fila de la consulta de egresos del periodo. */
+interface FilaEgreso {
+	fecha: string;
+	concepto: string;
+	establecimiento: string | null;
+	monto: string;
+	descripcion: string | null;
+	compra_meses: boolean;
+	num_meses: number | null;
+	monto_mensual: string | null;
+	forma_pago: string | null;
+	nom_tarjeta: string | null;
+	banco: string | null;
+	tipo_tarjeta: string | null;
+}
+
+/** Fila de la consulta de ingresos del periodo. */
+interface FilaIngreso {
+	fecha: string;
+	tipo_ingreso: string;
+	monto: string;
+	descripcion: string | null;
+	forma_pago: string | null;
+}
+
+/** Fila de la hoja «Resumen General», con columnas fijas. */
+interface FilaResumen {
+	Fecha: string;
+	Ingreso: number;
+	Egreso: number;
+	Concepto: string;
+	[clave: string]: string | number;
+}
 
 /** Fila de una hoja de cálculo: cada celda es texto o número. */
 type FilaExcel = Record<string, string | number>;
@@ -20,7 +54,11 @@ function formatDate(dateString: string): string {
  * generación del archivo fallaba con un 500.
  */
 function nombreHojaSeguro(base: string, usados: Set<string>): string {
-	let nombre = (base || 'Tarjeta').replace(/[[\]:*?/\\]/g, '-').trim().slice(0, 31) || 'Tarjeta';
+	let nombre =
+		(base || 'Tarjeta')
+			.replace(/[[\]:*?/\\]/g, '-')
+			.trim()
+			.slice(0, 31) || 'Tarjeta';
 
 	if (usados.has(nombre.toLowerCase())) {
 		let sufijo = 2;
@@ -119,10 +157,10 @@ export const GET: RequestHandler = async (event) => {
 		const workbook = XLSX.utils.book_new();
 
 		// HOJA 1: Resumen Completo
-		const movimientos: any[] = [];
+		const movimientos: FilaResumen[] = [];
 
 		// Agregar ingresos
-		ingresosResult.rows.forEach((ingreso: any) => {
+		ingresosResult.rows.forEach((ingreso: FilaIngreso) => {
 			movimientos.push({
 				Fecha: formatDate(ingreso.fecha),
 				Ingreso: parseFloat(ingreso.monto),
@@ -134,7 +172,7 @@ export const GET: RequestHandler = async (event) => {
 		});
 
 		// Agregar egresos
-		egresosResult.rows.forEach((egreso: any) => {
+		egresosResult.rows.forEach((egreso: FilaEgreso) => {
 			movimientos.push({
 				Fecha: formatDate(egreso.fecha),
 				Ingreso: 0,
@@ -157,7 +195,12 @@ export const GET: RequestHandler = async (event) => {
 		const totalEgresos = movimientos.reduce((sum, m) => sum + m.Egreso, 0);
 		const saldo = totalIngresos - totalEgresos;
 
-		movimientos.push({
+		// Las filas de separación y totales llevan texto vacío en columnas
+		// numéricas, así que salen del tipo de los datos y van en el arreglo de
+		// la hoja, que sí admite ambas cosas.
+		const filasResumen: FilaExcel[] = [...movimientos];
+
+		filasResumen.push({
 			Fecha: '',
 			Ingreso: '',
 			Egreso: '',
@@ -165,7 +208,7 @@ export const GET: RequestHandler = async (event) => {
 			Descripción: '',
 			'Forma de Pago': ''
 		});
-		movimientos.push({
+		filasResumen.push({
 			Fecha: 'TOTALES',
 			Ingreso: totalIngresos,
 			Egreso: totalEgresos,
@@ -174,7 +217,7 @@ export const GET: RequestHandler = async (event) => {
 			'Forma de Pago': ''
 		});
 
-		const ws1 = XLSX.utils.json_to_sheet(movimientos);
+		const ws1 = XLSX.utils.json_to_sheet(filasResumen);
 		XLSX.utils.book_append_sheet(workbook, ws1, 'Resumen General');
 
 		// HOJA 2: Resumen de Ingresos
@@ -182,7 +225,7 @@ export const GET: RequestHandler = async (event) => {
 		// línea en blanco y una de totales, donde las columnas numéricas llevan
 		// texto vacío. Sin la anotación, TypeScript deduce `Monto: number` de la
 		// primera fila y rechaza esos añadidos.
-		const ingresosData: FilaExcel[] = ingresosResult.rows.map((ingreso: any) => ({
+		const ingresosData: FilaExcel[] = ingresosResult.rows.map((ingreso: FilaIngreso) => ({
 			Fecha: formatDate(ingreso.fecha),
 			Tipo: ingreso.tipo_ingreso,
 			Monto: parseFloat(ingreso.monto),
@@ -209,7 +252,7 @@ export const GET: RequestHandler = async (event) => {
 		XLSX.utils.book_append_sheet(workbook, ws2, 'Ingresos');
 
 		// HOJA 3: Resumen de Egresos
-		const egresosData: FilaExcel[] = egresosResult.rows.map((egreso: any) => {
+		const egresosData: FilaExcel[] = egresosResult.rows.map((egreso: FilaEgreso) => {
 			let tipoTarjeta = '';
 			if (egreso.tipo_tarjeta) {
 				const tipos: Record<string, string> = {
@@ -275,11 +318,11 @@ export const GET: RequestHandler = async (event) => {
 
 		for (const tarjeta of tarjetasResult.rows) {
 			const egresosTarjeta = egresosResult.rows.filter(
-				(e: any) => e.nom_tarjeta === tarjeta.nom_tarjeta
+				(e: FilaEgreso) => e.nom_tarjeta === tarjeta.nom_tarjeta
 			);
 
 			if (egresosTarjeta.length > 0) {
-				const tarjetaData: FilaExcel[] = egresosTarjeta.map((egreso: any) => ({
+				const tarjetaData: FilaExcel[] = egresosTarjeta.map((egreso: FilaEgreso) => ({
 					Fecha: formatDate(egreso.fecha),
 					Concepto: egreso.concepto,
 					Establecimiento: egreso.establecimiento || '',
@@ -331,8 +374,8 @@ export const GET: RequestHandler = async (event) => {
 				'Content-Disposition': `attachment; filename="${nombreArchivo}.xlsx"`
 			}
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al generar reporte:', error);

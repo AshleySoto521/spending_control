@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/middleware';
+import { requireAdmin, esRespuestaDeAuth } from '$lib/server/middleware';
 import { hashPassword } from '$lib/server/auth';
 import { validarPassword } from '$lib/server/passwordPolicy';
 import { esUuid } from '$lib/server/validacion';
@@ -24,10 +24,7 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		// Verificar que el usuario existe
-		const userCheck = await query(
-			'SELECT nombre, email FROM usuarios WHERE id_usuario = $1',
-			[id]
-		);
+		const userCheck = await query('SELECT nombre, email FROM usuarios WHERE id_usuario = $1', [id]);
 
 		if (userCheck.rows.length === 0) {
 			return json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -40,8 +37,8 @@ export const DELETE: RequestHandler = async (event) => {
 			success: true,
 			message: `Usuario ${userCheck.rows[0].nombre} eliminado correctamente`
 		});
-	} catch (error: any) {
-		if (error.status === 401 || error.status === 403) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al eliminar usuario:', error);
@@ -74,16 +71,13 @@ export const PATCH: RequestHandler = async (event) => {
 
 			const passwordHash = await hashPassword(nuevaPassword);
 
-			await query(
-				'UPDATE usuarios SET password_hash = $1 WHERE id_usuario = $2',
-				[passwordHash, id]
-			);
+			await query('UPDATE usuarios SET password_hash = $1 WHERE id_usuario = $2', [
+				passwordHash,
+				id
+			]);
 
 			// Invalidar todas las sesiones del usuario
-			await query(
-				'UPDATE sesiones SET activa = FALSE WHERE id_usuario = $1',
-				[id]
-			);
+			await query('UPDATE sesiones SET activa = FALSE WHERE id_usuario = $1', [id]);
 
 			return json({
 				success: true,
@@ -102,17 +96,11 @@ export const PATCH: RequestHandler = async (event) => {
 				return json({ error: 'No puedes desactivarte a ti mismo' }, { status: 400 });
 			}
 
-			await query(
-				'UPDATE usuarios SET activo = $1 WHERE id_usuario = $2',
-				[body.activo, id]
-			);
+			await query('UPDATE usuarios SET activo = $1 WHERE id_usuario = $2', [body.activo, id]);
 
 			// Si se desactiva, cerrar sesiones
 			if (!body.activo) {
-				await query(
-					'UPDATE sesiones SET activa = FALSE WHERE id_usuario = $1',
-					[id]
-				);
+				await query('UPDATE sesiones SET activa = FALSE WHERE id_usuario = $1', [id]);
 			}
 
 			return json({
@@ -122,8 +110,8 @@ export const PATCH: RequestHandler = async (event) => {
 		}
 
 		return json({ error: 'Acción no válida' }, { status: 400 });
-	} catch (error: any) {
-		if (error.status === 401 || error.status === 403) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al modificar usuario:', error);

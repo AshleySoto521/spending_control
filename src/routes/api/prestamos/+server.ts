@@ -2,7 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero } from '$lib/server/validacion';
 
 // GET - Obtener todos los préstamos del usuario con sus saldos calculados
@@ -31,8 +31,8 @@ export const GET: RequestHandler = async (event) => {
 		);
 
 		return json({ prestamos: prestamos.rows });
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al obtener préstamos:', error);
 		return json({ error: 'Error al obtener préstamos' }, { status: 500 });
 	}
@@ -57,7 +57,15 @@ export const POST: RequestHandler = async (event) => {
 		} = data;
 
 		// Validaciones
-		if (!tipo_prestamo || !institucion || !monto_original || !plazo_meses || !pago_mensual || !dia_pago || !fecha_inicio) {
+		if (
+			!tipo_prestamo ||
+			!institucion ||
+			!monto_original ||
+			!plazo_meses ||
+			!pago_mensual ||
+			!dia_pago ||
+			!fecha_inicio
+		) {
 			return json({ error: 'Faltan campos requeridos' }, { status: 400 });
 		}
 
@@ -86,13 +94,15 @@ export const POST: RequestHandler = async (event) => {
 			]
 		);
 
-		return json({
-			message: 'Préstamo creado exitosamente',
-			prestamo: result.rows[0]
-		}, { status: 201 });
-
-	} catch (error: any) {
-		if (error.status === 401) return error;
+		return json(
+			{
+				message: 'Préstamo creado exitosamente',
+				prestamo: result.rows[0]
+			},
+			{ status: 201 }
+		);
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al crear préstamo:', error);
 		return json({ error: 'Error al crear préstamo' }, { status: 500 });
 	}
@@ -171,9 +181,8 @@ export const PUT: RequestHandler = async (event) => {
 			message: 'Préstamo actualizado exitosamente',
 			prestamo: result.rows[0]
 		});
-
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al actualizar préstamo:', error);
 		return json({ error: 'Error al actualizar préstamo' }, { status: 500 });
 	}
@@ -201,21 +210,17 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		// 1. Eliminar historial de pagos de este préstamo primero (para evitar errores de Foreign Key)
-		await query(
-			'DELETE FROM pagos_prestamos WHERE id_prestamo = $1',
-			[id_prestamo]
-		);
+		await query('DELETE FROM pagos_prestamos WHERE id_prestamo = $1', [id_prestamo]);
 
 		// 2. Eliminar el préstamo
-		await query(
-			'DELETE FROM prestamos WHERE id_prestamo = $1 AND id_usuario = $2',
-			[id_prestamo, userId]
-		);
+		await query('DELETE FROM prestamos WHERE id_prestamo = $1 AND id_usuario = $2', [
+			id_prestamo,
+			userId
+		]);
 
 		return json({ message: 'Préstamo eliminado exitosamente' });
-
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al eliminar préstamo:', error);
 		return json({ error: 'Error al eliminar préstamo' }, { status: 500 });
 	}

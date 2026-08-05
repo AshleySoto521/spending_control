@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { hashPassword, verifyPassword, generateToken } from '$lib/server/auth';
 import { validarPassword } from '$lib/server/passwordPolicy';
 import { cerrarTodasLasSesiones, crearSesion, registrarLog } from '$lib/server/security';
@@ -86,8 +86,8 @@ export const POST: RequestHandler = async (event) => {
 		});
 
 		return json({ success: true, message: 'Contraseña actualizada correctamente' });
-	} catch (error: any) {
-		if (error?.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al cambiar contraseña:', error);

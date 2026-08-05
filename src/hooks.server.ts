@@ -7,7 +7,10 @@ import { refrescarSesion } from '$lib/server/middleware';
 import { consumir } from '$lib/server/rateLimit';
 import { query } from '$lib/server/db';
 
-const esProduccion = String(env.NODE_ENV ?? '').split('#')[0].trim() === 'production';
+const esProduccion =
+	String(env.NODE_ENV ?? '')
+		.split('#')[0]
+		.trim() === 'production';
 
 /**
  * Rutas de página que exigen sesión válida.
@@ -78,9 +81,7 @@ function limiteAplicable(pathname: string) {
 }
 
 function esRutaProtegida(pathname: string): boolean {
-	return RUTAS_PROTEGIDAS.some(
-		(ruta) => pathname === ruta || pathname.startsWith(`${ruta}/`)
-	);
+	return RUTAS_PROTEGIDAS.some((ruta) => pathname === ruta || pathname.startsWith(`${ruta}/`));
 }
 
 function esRutaAdmin(pathname: string): boolean {
@@ -90,9 +91,7 @@ function esRutaAdmin(pathname: string): boolean {
 /**
  * Devuelve el id del usuario de la sesión, o `null` si no hay sesión válida.
  */
-async function usuarioDeLaSesion(
-	event: Parameters<Handle>[0]['event']
-): Promise<string | null> {
+async function usuarioDeLaSesion(event: Parameters<Handle>[0]['event']): Promise<string | null> {
 	const token = event.cookies.get(cookieConfig.name);
 	if (!token) return null;
 
@@ -192,10 +191,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	);
 
 	if (esProduccion) {
-		response.headers.set(
-			'Strict-Transport-Security',
-			'max-age=31536000; includeSubDomains'
-		);
+		response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 	}
 
 	// El token de recuperación viaja en la URL de /reset-password: nunca debe

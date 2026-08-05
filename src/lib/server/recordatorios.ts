@@ -56,7 +56,9 @@ export const MAXIMO_AVISOS_SIN_ACTIVIDAD = 2;
  * primera tanda haya salido sin incidencias.
  */
 function enteroDeEntorno(valor: string | undefined, porDefecto: number): number {
-	const limpio = String(valor ?? '').split('#')[0].trim();
+	const limpio = String(valor ?? '')
+		.split('#')[0]
+		.trim();
 	const numero = Number.parseInt(limpio, 10);
 	return Number.isSafeInteger(numero) && numero > 0 && numero <= 200 ? numero : porDefecto;
 }

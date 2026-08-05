@@ -6,7 +6,7 @@ export interface SessionState {
 }
 
 function createSessionStore() {
-	const { subscribe, set, update } = writable<SessionState>({
+	const { subscribe, set } = writable<SessionState>({
 		showExpiredModal: false,
 		reason: null
 	});

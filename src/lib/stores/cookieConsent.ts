@@ -29,7 +29,9 @@ async function saveConsentToServer(consent: CookieConsent): Promise<void> {
 		});
 
 		if (!response.ok) {
-			console.warn('No se pudo guardar el consentimiento en el servidor (usuario posiblemente no autenticado)');
+			console.warn(
+				'No se pudo guardar el consentimiento en el servidor (usuario posiblemente no autenticado)'
+			);
 		}
 	} catch (error) {
 		console.warn('Error al guardar consentimiento en el servidor:', error);
@@ -88,10 +90,13 @@ function createCookieConsentStore() {
 			};
 
 			if (browser) {
-				localStorage.setItem(CONSENT_KEY, JSON.stringify({
-					version: CONSENT_VERSION,
-					consent
-				}));
+				localStorage.setItem(
+					CONSENT_KEY,
+					JSON.stringify({
+						version: CONSENT_VERSION,
+						consent
+					})
+				);
 			}
 
 			set(consent);
@@ -112,10 +117,13 @@ function createCookieConsentStore() {
 			};
 
 			if (browser) {
-				localStorage.setItem(CONSENT_KEY, JSON.stringify({
-					version: CONSENT_VERSION,
-					consent
-				}));
+				localStorage.setItem(
+					CONSENT_KEY,
+					JSON.stringify({
+						version: CONSENT_VERSION,
+						consent
+					})
+				);
 
 				// Limpiar cookies opcionales si las rechaza
 				// (mantener solo auth_token que es necesaria)
@@ -129,7 +137,7 @@ function createCookieConsentStore() {
 
 		// Configuración personalizada
 		setConsent: (consent: Partial<CookieConsent>) => {
-			update(current => {
+			update((current) => {
 				const newConsent = {
 					...current,
 					...consent,
@@ -139,10 +147,13 @@ function createCookieConsentStore() {
 				};
 
 				if (browser) {
-					localStorage.setItem(CONSENT_KEY, JSON.stringify({
-						version: CONSENT_VERSION,
-						consent: newConsent
-					}));
+					localStorage.setItem(
+						CONSENT_KEY,
+						JSON.stringify({
+							version: CONSENT_VERSION,
+							consent: newConsent
+						})
+					);
 				}
 
 				// Guardar en el servidor (si el usuario está autenticado)

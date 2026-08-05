@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/middleware';
+import { requireAdmin, esRespuestaDeAuth } from '$lib/server/middleware';
 import * as XLSX from 'xlsx';
 
 // Función auxiliar para formatear fechas sin conversión de zona horaria
@@ -34,8 +34,8 @@ export const GET: RequestHandler = async (event) => {
 		const usuarios = result.rows.map((usuario) => ({
 			Nombre: usuario.nombre,
 			Email: usuario.email,
-			'Teléfono': usuario.celular,
-			'Tarjetas': usuario.total_tarjetas,
+			Teléfono: usuario.celular,
+			Tarjetas: usuario.total_tarjetas,
 			'Miembro desde': formatDate(usuario.fecha_registro)
 		}));
 
@@ -49,7 +49,7 @@ export const GET: RequestHandler = async (event) => {
 			{ wch: 30 }, // Email
 			{ wch: 15 }, // Teléfono
 			{ wch: 10 }, // Tarjetas
-			{ wch: 25 }  // Miembro desde
+			{ wch: 25 } // Miembro desde
 		];
 		worksheet['!cols'] = columnWidths;
 
@@ -69,8 +69,8 @@ export const GET: RequestHandler = async (event) => {
 				'Content-Disposition': `attachment; filename="${filename}"`
 			}
 		});
-	} catch (error: any) {
-		if (error.status === 401 || error.status === 403) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al exportar usuarios:', error);

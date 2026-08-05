@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { cookieConfig } from '$lib/server/cookies';
 import { cerrarSesionPorId, listarSesiones, registrarLog } from '$lib/server/security';
 import { esUuid } from '$lib/server/validacion';
@@ -47,8 +47,8 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		return json({ success: true, eraLaActual });
-	} catch (error: any) {
-		if (error.status === 401) return error;
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) return error;
 		console.error('Error al cerrar la sesión:', error);
 		return json({ error: 'Error al cerrar la sesión' }, { status: 500 });
 	}

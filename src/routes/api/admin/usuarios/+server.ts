@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/middleware';
+import { requireAdmin, esRespuestaDeAuth } from '$lib/server/middleware';
 
 // GET - Listar todos los usuarios (solo admin)
 export const GET: RequestHandler = async (event) => {
@@ -25,8 +25,8 @@ export const GET: RequestHandler = async (event) => {
 		);
 
 		return json({ usuarios: result.rows });
-	} catch (error: any) {
-		if (error.status === 401 || error.status === 403) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al listar usuarios:', error);

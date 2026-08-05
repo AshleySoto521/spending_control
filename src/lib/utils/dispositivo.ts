@@ -13,23 +13,32 @@ export function describirDispositivo(userAgent: unknown): string {
 
 	// El orden importa: Edge y Opera también dicen «Chrome» en su user agent, y
 	// Chrome dice «Safari». Se comprueba de más específico a más genérico.
-	const navegador =
-		/Edg\//.test(ua) ? 'Edge'
-		: /OPR\/|Opera/.test(ua) ? 'Opera'
-		: /Chrome\//.test(ua) ? 'Chrome'
-		: /Firefox\//.test(ua) ? 'Firefox'
-		: /Safari\//.test(ua) ? 'Safari'
-		: null;
+	const navegador = /Edg\//.test(ua)
+		? 'Edge'
+		: /OPR\/|Opera/.test(ua)
+			? 'Opera'
+			: /Chrome\//.test(ua)
+				? 'Chrome'
+				: /Firefox\//.test(ua)
+					? 'Firefox'
+					: /Safari\//.test(ua)
+						? 'Safari'
+						: null;
 
 	// iPadOS se anuncia como Macintosh, así que iPad se comprueba antes.
-	const sistema =
-		/iPad/.test(ua) ? 'iPad'
-		: /iPhone/.test(ua) ? 'iPhone'
-		: /Android/.test(ua) ? 'Android'
-		: /Windows/.test(ua) ? 'Windows'
-		: /Mac OS X|Macintosh/.test(ua) ? 'Mac'
-		: /Linux/.test(ua) ? 'Linux'
-		: null;
+	const sistema = /iPad/.test(ua)
+		? 'iPad'
+		: /iPhone/.test(ua)
+			? 'iPhone'
+			: /Android/.test(ua)
+				? 'Android'
+				: /Windows/.test(ua)
+					? 'Windows'
+					: /Mac OS X|Macintosh/.test(ua)
+						? 'Mac'
+						: /Linux/.test(ua)
+							? 'Linux'
+							: null;
 
 	if (navegador && sistema) return `${navegador} en ${sistema}`;
 	if (sistema) return sistema;

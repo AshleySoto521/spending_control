@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 
 export const GET: RequestHandler = async (event) => {
 	try {
@@ -28,8 +28,8 @@ export const GET: RequestHandler = async (event) => {
 			[userId]
 		);
 
-		const saldoActual = parseFloat(totalIngresos.rows[0].total) -
-		                    parseFloat(totalEgresos.rows[0].total);
+		const saldoActual =
+			parseFloat(totalIngresos.rows[0].total) - parseFloat(totalEgresos.rows[0].total);
 
 		// 2. Obtener pagos pendientes de tarjetas (Deuda inmediata)
 		const pagosPendientes = await query(
@@ -68,9 +68,17 @@ export const GET: RequestHandler = async (event) => {
 
 		// A. Procesar Préstamos: Calcular fecha real del próximo pago
 		const hoy = new Date();
-		const prestamosProcesados = prestamosPendientesQuery.rows.map((prestamo: any) => {
+		interface FilaPrestamo {
+			id_prestamo: number;
+			nombre: string;
+			/** La consulta renombra pago_mensual a monto_pago. */
+			monto_pago: string;
+			dia_pago: number;
+		}
+
+		const prestamosProcesados = prestamosPendientesQuery.rows.map((prestamo: FilaPrestamo) => {
 			let fechaPago = new Date(hoy.getFullYear(), hoy.getMonth(), prestamo.dia_pago);
-			
+
 			// Si el día de pago de este mes ya pasó (o es hoy), asumimos el pago para el siguiente mes
 			// OJO: Ajusta esta lógica según tu regla de negocio. Aquí asumo que si hoy es 15 y el pago es el 10, el próximo es el 10 del otro mes.
 			if (fechaPago < hoy) {
@@ -86,11 +94,13 @@ export const GET: RequestHandler = async (event) => {
 
 		// B. Calcular Totales a Pagar
 		const totalTarjetasPendiente = pagosPendientes.rows.reduce(
-			(sum: number, item: any) => sum + parseFloat(item.monto_pago), 0
+			(sum: number, item: { monto_pago: string }) => sum + parseFloat(item.monto_pago),
+			0
 		);
 
 		const totalPrestamosPendiente = prestamosProcesados.reduce(
-			(sum: number, item: any) => sum + item.monto_pago, 0
+			(sum: number, item: { monto_pago: number }) => sum + item.monto_pago,
+			0
 		);
 
 		// C. Calcular Saldo Proyectado (Saldo Real - Deudas Próximas)
@@ -107,9 +117,8 @@ export const GET: RequestHandler = async (event) => {
 			pagos_pendientes: pagosPendientes.rows,
 			prestamos_pendientes: prestamosProcesados // Enviamos los préstamos con la fecha calculada
 		});
-
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener datos de proyección:', error);

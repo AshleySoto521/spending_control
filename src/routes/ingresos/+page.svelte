@@ -4,13 +4,14 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import ExportModal from '$lib/components/ExportModal.svelte';
-	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPost, apiPut, apiDelete } from '$lib/utils/apiClient';
+	import { esSesionExpirada, mensajeDeError } from '$lib/utils/errores';
+	import type { Ingreso, FormaPago } from '$lib/tipos';
 
 	let loading = $state(true);
 	let error = $state('');
-	let ingresos: any[] = $state([]);
-	let formasPago: any[] = $state([]);
+	let ingresos: Ingreso[] = $state([]);
+	let formasPago: FormaPago[] = $state([]);
 	let showModal = $state(false);
 	let showExportModal = $state(false);
 	let editingId = $state<number | null>(null);
@@ -24,10 +25,8 @@
 
 	async function loadData() {
 		try {
-			const token = $authStore.token;
-
 			const [ingresosRes, formasPagoRes] = await Promise.all([
-				apiGet('/api/ingresos', token),
+				apiGet('/api/ingresos'),
 				fetch('/api/formas-pago')
 			]);
 
@@ -38,16 +37,16 @@
 
 			ingresos = ingresosData.ingresos;
 			formasPago = formasPagoData.formas_pago;
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		} finally {
 			loading = false;
 		}
 	}
 
-	function handleEdit(ingreso: any) {
+	function handleEdit(ingreso: Ingreso) {
 		editingId = ingreso.id_ingreso;
 
 		const idFormaPago = ingreso.id_forma_pago != null ? String(ingreso.id_forma_pago) : '';
@@ -65,7 +64,6 @@
 
 	async function handleSubmit() {
 		try {
-			const token = $authStore.token;
 			const url = editingId ? `/api/ingresos/${editingId}` : '/api/ingresos';
 			const body = {
 				...formData,
@@ -73,9 +71,7 @@
 				id_forma_pago: parseInt(formData.id_forma_pago)
 			};
 
-			const response = editingId
-				? await apiPut(url, token, body)
-				: await apiPost(url, token, body);
+			const response = editingId ? await apiPut(url, body) : await apiPost(url, body);
 
 			if (!response.ok) {
 				const data = await response.json();
@@ -92,9 +88,9 @@
 				descripcion: ''
 			};
 			loadData();
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
@@ -103,14 +99,13 @@
 		if (!confirm('¿Estás seguro de eliminar este ingreso?')) return;
 
 		try {
-			const token = $authStore.token;
-			const response = await apiDelete(`/api/ingresos/${id}`, token);
+			const response = await apiDelete(`/api/ingresos/${id}`);
 
 			if (!response.ok) throw new Error('Error al eliminar');
 			loadData();
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
@@ -145,16 +140,23 @@
 				</div>
 				<div class="flex gap-3">
 					<button
-						onclick={() => { showExportModal = true; }}
+						onclick={() => {
+							showExportModal = true;
+						}}
 						class="bg-green-600 text-white px-4 py-1 rounded-lg font-semibold hover:bg-green-700 transition flex items-center"
 					>
 						<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+							/>
 						</svg>
 						Exportar
 					</button>
 					<button
-						onclick={() => showModal = true}
+						onclick={() => (showModal = true)}
 						class="bg-gray-800 text-white px-4 py-1 rounded-lg font-semibold hover:bg-gray-900 transition"
 					>
 						+ Nuevo Ingreso
@@ -178,13 +180,18 @@
 						<tr>
 							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
 							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Forma de Pago</th>
-							<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
-							<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+								>Forma de Pago</th
+							>
+							<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th
+							>
+							<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase"
+								>Acciones</th
+							>
 						</tr>
 					</thead>
 					<tbody class="bg-white divide-y divide-gray-200">
-						{#each ingresos as ingreso}
+						{#each ingresos as ingreso (ingreso.id_ingreso)}
 							<tr class="hover:bg-gray-50">
 								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
 									{formatDate(ingreso.fecha_ingreso)}
@@ -198,7 +205,9 @@
 								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
 									{ingreso.forma_pago}
 								</td>
-								<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+								<td
+									class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right"
+								>
 									{formatCurrency(parseFloat(ingreso.monto))}
 								</td>
 								<td class="px-6 py-4 whitespace-nowrap text-right text-sm">
@@ -237,17 +246,39 @@
 			<div class="bg-white rounded-xl shadow-xl max-w-md w-full">
 				<div class="p-6">
 					<div class="flex justify-between items-center mb-6">
-						<h2 class="text-2xl font-bold text-gray-900">{editingId ? 'Editar Ingreso' : 'Nuevo Ingreso'}</h2>
-						<button onclick={() => { showModal = false; editingId = null; }} class="text-gray-400 hover:text-gray-600" aria-label="Cerrar modal">
+						<h2 class="text-2xl font-bold text-gray-900">
+							{editingId ? 'Editar Ingreso' : 'Nuevo Ingreso'}
+						</h2>
+						<button
+							onclick={() => {
+								showModal = false;
+								editingId = null;
+							}}
+							class="text-gray-400 hover:text-gray-600"
+							aria-label="Cerrar modal"
+						>
 							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
 							</svg>
 						</button>
 					</div>
 
-					<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleSubmit();
+						}}
+						class="space-y-4"
+					>
 						<div>
-							<label for="tipo_ingreso" class="block text-sm font-medium text-gray-700 mb-2">Tipo de Ingreso</label>
+							<label for="tipo_ingreso" class="block text-sm font-medium text-gray-700 mb-2"
+								>Tipo de Ingreso</label
+							>
 							<input
 								id="tipo_ingreso"
 								bind:value={formData.tipo_ingreso}
@@ -271,7 +302,9 @@
 						</div>
 
 						<div>
-							<label for="forma_pago" class="block text-sm font-medium text-gray-700 mb-2">Forma de Pago</label>
+							<label for="forma_pago" class="block text-sm font-medium text-gray-700 mb-2"
+								>Forma de Pago</label
+							>
 							<select
 								id="forma_pago"
 								bind:value={formData.id_forma_pago}
@@ -279,14 +312,16 @@
 								class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-transparent"
 							>
 								<option value="">Seleccionar...</option>
-								{#each formasPago as forma}
+								{#each formasPago as forma (forma.id_forma_pago)}
 									<option value={String(forma.id_forma_pago)}>{forma.tipo}</option>
 								{/each}
 							</select>
 						</div>
 
 						<div>
-							<label for="fecha_ingreso" class="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+							<label for="fecha_ingreso" class="block text-sm font-medium text-gray-700 mb-2"
+								>Fecha</label
+							>
 							<input
 								id="fecha_ingreso"
 								bind:value={formData.fecha_ingreso}
@@ -297,7 +332,9 @@
 						</div>
 
 						<div>
-							<label for="descripcion" class="block text-sm font-medium text-gray-700 mb-2">Descripción (opcional)</label>
+							<label for="descripcion" class="block text-sm font-medium text-gray-700 mb-2"
+								>Descripción (opcional)</label
+							>
 							<textarea
 								id="descripcion"
 								bind:value={formData.descripcion}
@@ -310,7 +347,10 @@
 						<div class="flex space-x-3 pt-4">
 							<button
 								type="button"
-								onclick={() => { showModal = false; editingId = null; }}
+								onclick={() => {
+									showModal = false;
+									editingId = null;
+								}}
 								class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300"
 							>
 								Cancelar
@@ -328,6 +368,11 @@
 		</div>
 	{/if}
 
-	<ExportModal bind:show={showExportModal} onClose={() => { showExportModal = false; }} />
+	<ExportModal
+		bind:show={showExportModal}
+		onClose={() => {
+			showExportModal = false;
+		}}
+	/>
 	<Footer />
 </ProtectedRoute>

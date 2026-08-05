@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero } from '$lib/server/validacion';
 
 // PUT - Actualizar ingreso
@@ -35,12 +35,20 @@ export const PUT: RequestHandler = async (event) => {
 				descripcion = COALESCE($5, descripcion)
 			WHERE id_ingreso = $6 AND id_usuario = $7
 			RETURNING *`,
-			[data.tipo_ingreso, data.monto, data.id_forma_pago, data.fecha_ingreso, data.descripcion, id, userId]
+			[
+				data.tipo_ingreso,
+				data.monto,
+				data.id_forma_pago,
+				data.fecha_ingreso,
+				data.descripcion,
+				id,
+				userId
+			]
 		);
 
 		return json({ success: true, ingreso: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al actualizar ingreso:', error);
@@ -68,8 +76,8 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		return json({ success: true, message: 'Ingreso eliminado correctamente' });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al eliminar ingreso:', error);

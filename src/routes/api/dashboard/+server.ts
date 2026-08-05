@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 
 export const GET: RequestHandler = async (event) => {
 	try {
@@ -242,8 +242,8 @@ export const GET: RequestHandler = async (event) => {
 			proximos_pagos: proximosPagos.rows,
 			proximas_cuotas_msi: proximasCuotasMSI.rows
 		});
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener datos del dashboard:', error);

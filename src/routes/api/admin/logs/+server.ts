@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { query } from '$lib/server/db';
+import { query, type ParametroSql } from '$lib/server/db';
 import { leerPaginacion } from '$lib/server/paginacion';
-import { requireAdmin } from '$lib/server/middleware';
+import { requireAdmin, esRespuestaDeAuth } from '$lib/server/middleware';
 
 // GET - Listar logs de seguridad (solo admin)
 export const GET: RequestHandler = async (event) => {
@@ -34,7 +34,7 @@ export const GET: RequestHandler = async (event) => {
 			WHERE 1=1
 		`;
 
-		const params: any[] = [];
+		const params: ParametroSql[] = [];
 		let paramCount = 1;
 
 		if (tipoEvento) {
@@ -67,7 +67,7 @@ export const GET: RequestHandler = async (event) => {
 			WHERE 1=1
 		`;
 
-		const countParams: any[] = [];
+		const countParams: ParametroSql[] = [];
 		let countParamIndex = 1;
 
 		if (tipoEvento) {
@@ -96,8 +96,8 @@ export const GET: RequestHandler = async (event) => {
 			limit,
 			offset
 		});
-	} catch (error: any) {
-		if (error.status === 401 || error.status === 403) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al listar logs:', error);

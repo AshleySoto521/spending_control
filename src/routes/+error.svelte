@@ -119,7 +119,12 @@
 						class="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+							/>
 						</svg>
 						Iniciar Sesión
 					</a>
@@ -130,7 +135,12 @@
 						class="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+							/>
 						</svg>
 						Ir al Dashboard
 					</button>
@@ -140,7 +150,12 @@
 						class="bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors inline-flex items-center justify-center gap-2"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 19l-7-7m0 0l7-7m-7 7h18"
+							/>
 						</svg>
 						Volver al Inicio
 					</button>
@@ -154,7 +169,12 @@
 					class="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors inline-flex items-center justify-center gap-1"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M15 19l-7-7 7-7"
+						/>
 					</svg>
 					Página Anterior
 				</button>
@@ -165,7 +185,12 @@
 						class="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors inline-flex items-center justify-center gap-1"
 					>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+							/>
 						</svg>
 						Recargar Página
 					</button>
@@ -177,7 +202,10 @@
 		<div class="mt-8 text-center">
 			<p class="text-sm text-gray-500">
 				¿Necesitas ayuda?
-				<a href="mailto:soporte@controldegastos.com" class="text-gray-700 hover:text-gray-900 font-medium underline">
+				<a
+					href="mailto:soporte@controldegastos.com"
+					class="text-gray-700 hover:text-gray-900 font-medium underline"
+				>
 					Contacta a soporte
 				</a>
 			</p>
@@ -206,6 +234,8 @@
 	.btn-primary:hover {
 		background-color: #374151;
 		transform: translateY(-1px);
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		box-shadow:
+			0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 </style>

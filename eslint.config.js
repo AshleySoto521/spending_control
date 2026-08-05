@@ -24,7 +24,14 @@ export default defineConfig(
 		rules: {
 			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
-			'no-undef': 'off'
+			'no-undef': 'off',
+
+			// Esta regla exige envolver cada enlace en `resolve()` para que siga
+			// funcionando si la aplicación se sirve bajo un subdirectorio. Aquí no
+			// hay `kit.paths.base` configurado y se sirve desde la raíz del
+			// dominio, así que solo generaba 75 avisos sin ningún riesgo detrás.
+			// Si algún día se despliega bajo un subdirectorio, hay que reactivarla.
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	},
 	{

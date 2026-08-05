@@ -64,7 +64,7 @@ const poolConfig = databaseUrl
 			user: limpiar(env.DATABASE_USER),
 			password: limpiar(env.DATABASE_PASSWORD),
 			...opcionesComunes
-	  };
+		};
 
 const pool = new Pool(poolConfig);
 
@@ -72,7 +72,10 @@ pool.on('error', (err) => {
 	console.error('Error inesperado en el cliente de PostgreSQL', err.message);
 });
 
-export async function query(text: string, params?: any[]) {
+/** Valor admitido como parámetro de una consulta. */
+export type ParametroSql = string | number | boolean | Date | null | undefined | ParametroSql[];
+
+export async function query(text: string, params?: ParametroSql[]) {
 	const start = Date.now();
 
 	try {
@@ -87,9 +90,12 @@ export async function query(text: string, params?: any[]) {
 		}
 
 		return res;
-	} catch (error: any) {
+	} catch (error) {
 		// Nunca registramos `params`: contienen contraseñas hasheadas y tokens.
-		console.error('Error en consulta a la base de datos:', error?.message ?? error);
+		console.error(
+			'Error en consulta a la base de datos:',
+			error instanceof Error ? error.message : error
+		);
 		throw error;
 	}
 }

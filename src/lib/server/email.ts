@@ -81,6 +81,23 @@ function getTransporter(): Transporter {
 }
 
 /**
+ * Error de nodemailer.
+ *
+ * Trae campos propios del protocolo SMTP —`code`, `command`, `response`— que no
+ * están en `Error` y que son justo lo que sirve para diagnosticar un fallo de
+ * envío: distinguir un rechazo de autenticación de un buzón inexistente.
+ */
+interface ErrorSmtp extends Error {
+	code?: string;
+	command?: string;
+	response?: string;
+}
+
+function detallesSmtp(error: unknown): ErrorSmtp {
+	return error instanceof Error ? (error as ErrorSmtp) : new Error(String(error));
+}
+
+/**
  * Escapa el texto que se interpola en la plantilla HTML del correo.
  * `nombre` lo elige la propia persona al registrarse y no se filtra en ningún
  * punto, así que sin escapar podría romper el marcado del mensaje.
@@ -233,7 +250,9 @@ export async function sendResetPasswordEmail(
 
 		// Validar configuración de email
 		if (!EMAIL_USER || !EMAIL_PASS) {
-			console.error('❌ Configuración de email incompleta. Verifica EMAIL_USER y EMAIL_PASS en .env');
+			console.error(
+				'❌ Configuración de email incompleta. Verifica EMAIL_USER y EMAIL_PASS en .env'
+			);
 			return {
 				success: false,
 				error: 'Configuración de email no disponible'
@@ -261,7 +280,8 @@ export async function sendResetPasswordEmail(
 			success: true,
 			messageId: info.messageId
 		};
-	} catch (error: any) {
+	} catch (errorCrudo) {
+		const error = detallesSmtp(errorCrudo);
 		console.error('❌ Error al enviar email:', error.message);
 		console.error('Código de error:', error.code);
 		console.error('Comando:', error.command);
@@ -409,10 +429,16 @@ export async function sendRecordatorioEmail(
 		});
 
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
+	} catch (error) {
 		// Sin el destinatario: en producción los logs persisten.
-		console.error('❌ Error al enviar recordatorio:', error?.message ?? error);
-		return { success: false, error: error?.message || 'Error al enviar recordatorio' };
+		console.error(
+			'❌ Error al enviar recordatorio:',
+			error instanceof Error ? error.message : error
+		);
+		return {
+			success: false,
+			error: (error instanceof Error ? error.message : '') || 'Error al enviar recordatorio'
+		};
 	}
 }
 
@@ -556,9 +582,16 @@ export async function sendPrimerosPasosEmail(
 		});
 
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		console.error('❌ Error al enviar el correo de primeros pasos:', error?.message ?? error);
-		return { success: false, error: error?.message || 'Error al enviar el correo' };
+	} catch (errorCrudo) {
+		const error = detallesSmtp(errorCrudo);
+		console.error(
+			'❌ Error al enviar el correo de primeros pasos:',
+			error instanceof Error ? error.message : error
+		);
+		return {
+			success: false,
+			error: (error instanceof Error ? error.message : '') || 'Error al enviar el correo'
+		};
 	}
 }
 
@@ -612,9 +645,16 @@ export async function sendVerificacionEmail(
 		});
 
 		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		console.error('❌ Error al enviar la verificación:', error?.message ?? error);
-		return { success: false, error: error?.message || 'Error al enviar el correo' };
+	} catch (errorCrudo) {
+		const error = detallesSmtp(errorCrudo);
+		console.error(
+			'❌ Error al enviar la verificación:',
+			error instanceof Error ? error.message : error
+		);
+		return {
+			success: false,
+			error: (error instanceof Error ? error.message : '') || 'Error al enviar el correo'
+		};
 	}
 }
 
@@ -629,7 +669,8 @@ export async function testEmailConnection(): Promise<boolean> {
 
 		console.log('✓ Conexión SMTP exitosa');
 		return true;
-	} catch (error: any) {
+	} catch (errorCrudo) {
+		const error = detallesSmtp(errorCrudo);
 		console.error('❌ Error en conexión SMTP:', error.message);
 		console.error('Código de error:', error.code);
 		if (error.response) {

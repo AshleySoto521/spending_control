@@ -6,11 +6,13 @@
 	import { authStore } from '$lib/stores/auth';
 	import { apiGet, apiPut, apiPost, apiDelete } from '$lib/utils/apiClient';
 	import { goto } from '$app/navigation';
+	import { esSesionExpirada, mensajeDeError } from '$lib/utils/errores';
+	import type { Usuario, SesionAbierta } from '$lib/tipos';
 
 	let loading = $state(true);
 	let error = $state('');
 	let successMessage = $state('');
-	let userData: any = $state(null);
+	let userData: Usuario | null = $state(null);
 
 	// Datos del perfil
 	let nombre = $state('');
@@ -26,7 +28,7 @@
 	let loadingPassword = $state(false);
 
 	// Dispositivos con la sesión abierta
-	let sesiones: any[] = $state([]);
+	let sesiones: SesionAbierta[] = $state([]);
 	let cargandoSesiones = $state(true);
 	let errorSesiones = $state('');
 	let cerrandoSesion = $state('');
@@ -36,14 +38,14 @@
 		errorSesiones = '';
 
 		try {
-			const respuesta = await apiGet('/api/user/sesiones', $authStore.token);
+			const respuesta = await apiGet('/api/user/sesiones');
 
 			if (!respuesta.ok) throw new Error('No pudimos cargar tus dispositivos');
 
 			sesiones = (await respuesta.json()).sesiones ?? [];
-		} catch (err: any) {
-			if (!err.message?.includes('Sesión expirada')) {
-				errorSesiones = err.message ?? 'No pudimos cargar tus dispositivos';
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				errorSesiones = mensajeDeError(err);
 			}
 		} finally {
 			cargandoSesiones = false;
@@ -51,7 +53,10 @@
 	}
 
 	async function cerrarSesion(id: string, esActual: boolean) {
-		if (esActual && !confirm('Es la sesión de este dispositivo. Se cerrará tu sesión aquí. ¿Continuar?')) {
+		if (
+			esActual &&
+			!confirm('Es la sesión de este dispositivo. Se cerrará tu sesión aquí. ¿Continuar?')
+		) {
 			return;
 		}
 
@@ -59,7 +64,7 @@
 		errorSesiones = '';
 
 		try {
-			const respuesta = await apiDelete(`/api/user/sesiones/${id}`, $authStore.token);
+			const respuesta = await apiDelete(`/api/user/sesiones/${id}`);
 
 			if (!respuesta.ok) throw new Error('No pudimos cerrar esa sesión');
 
@@ -71,8 +76,8 @@
 			}
 
 			await cargarSesiones();
-		} catch (err: any) {
-			errorSesiones = err.message ?? 'No pudimos cerrar esa sesión';
+		} catch (err) {
+			errorSesiones = mensajeDeError(err) ?? 'No pudimos cerrar esa sesión';
 		} finally {
 			cerrandoSesion = '';
 		}
@@ -85,7 +90,7 @@
 
 	async function cargarVerificacion() {
 		try {
-			const respuesta = await apiGet('/api/user/verificacion', $authStore.token);
+			const respuesta = await apiGet('/api/user/verificacion');
 			if (respuesta.ok) verificacion = await respuesta.json();
 		} catch {
 			// Silencioso: es un aviso, no una función crítica.
@@ -97,7 +102,7 @@
 		mensajeVerificacion = '';
 
 		try {
-			const respuesta = await apiPost('/api/user/verificacion', $authStore.token, {});
+			const respuesta = await apiPost('/api/user/verificacion', {});
 			const datos = await respuesta.json();
 
 			mensajeVerificacion = respuesta.ok
@@ -129,7 +134,7 @@
 		errorEliminar = '';
 
 		try {
-			const respuesta = await apiPost('/api/user/eliminar', $authStore.token, {
+			const respuesta = await apiPost('/api/user/eliminar', {
 				password: passwordEliminar
 			});
 
@@ -158,8 +163,7 @@
 
 	async function loadUserData() {
 		try {
-			const token = $authStore.token;
-			const response = await apiGet('/api/user', token);
+			const response = await apiGet('/api/user');
 
 			if (!response.ok) {
 				throw new Error('Error al cargar datos del usuario');
@@ -167,12 +171,12 @@
 
 			const data = await response.json();
 			userData = data.user;
-			nombre = userData.nombre;
-			email = userData.email;
-			celular = userData.celular || '';
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+			nombre = data.user.nombre;
+			email = data.user.email;
+			celular = data.user.celular ?? '';
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		} finally {
 			loading = false;
@@ -184,8 +188,7 @@
 		successMessage = '';
 
 		try {
-			const token = $authStore.token;
-			const response = await apiPut('/api/user', token, { nombre, celular });
+			const response = await apiPut('/api/user', { nombre, celular });
 
 			const data = await response.json();
 
@@ -196,15 +199,19 @@
 			successMessage = 'Perfil actualizado correctamente';
 			userData = data.user;
 
-			// Actualizar el nombre en el store de autenticación
-			authStore.updateUser({ ...userData });
+			// El store solo guarda lo que la interfaz necesita pintar.
+			authStore.updateUser({
+				id: data.user.id_usuario,
+				nombre: data.user.nombre,
+				email: data.user.email
+			});
 
 			setTimeout(() => {
 				successMessage = '';
 			}, 3000);
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				error = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				error = mensajeDeError(err);
 			}
 		}
 	}
@@ -226,8 +233,7 @@
 		loadingPassword = true;
 
 		try {
-			const token = $authStore.token;
-			const response = await apiPost('/api/user/change-password', token, {
+			const response = await apiPost('/api/user/change-password', {
 				currentPassword,
 				newPassword
 			});
@@ -246,9 +252,9 @@
 			setTimeout(() => {
 				passwordSuccess = '';
 			}, 3000);
-		} catch (err: any) {
-			if (!err.message.includes('Sesión expirada')) {
-				passwordError = err.message;
+		} catch (err) {
+			if (!esSesionExpirada(err)) {
+				passwordError = mensajeDeError(err);
 			}
 		} finally {
 			loadingPassword = false;
@@ -292,7 +298,9 @@
 						<h2 class="text-xl font-bold text-gray-900 mb-6">Información Personal</h2>
 
 						{#if error}
-							<div class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg mb-4">
+							<div
+								class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg mb-4"
+							>
 								{error}
 							</div>
 						{/if}
@@ -303,7 +311,13 @@
 							</div>
 						{/if}
 
-						<form onsubmit={(e) => { e.preventDefault(); handleUpdateProfile(); }} class="space-y-4">
+						<form
+							onsubmit={(e) => {
+								e.preventDefault();
+								handleUpdateProfile();
+							}}
+							class="space-y-4"
+						>
 							<div>
 								<label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
 									Nombre Completo
@@ -351,14 +365,14 @@
 							{#if userData}
 								<div class="pt-4 border-t border-gray-200">
 									<p class="text-sm text-gray-500">
-										Miembro desde: <span class="font-medium text-gray-900">{formatDate(userData.fecha_registro)}</span>
+										Miembro desde: <span class="font-medium text-gray-900"
+											>{formatDate(userData.fecha_registro)}</span
+										>
 									</p>
 								</div>
 							{/if}
 
-							<button type="submit" class="btn-primary w-full">
-								Guardar Cambios
-							</button>
+							<button type="submit" class="btn-primary w-full"> Guardar Cambios </button>
 						</form>
 					</div>
 
@@ -367,7 +381,9 @@
 						<h2 class="text-xl font-bold text-gray-900 mb-6">Cambiar Contraseña</h2>
 
 						{#if passwordError}
-							<div class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg mb-4">
+							<div
+								class="bg-gray-100 border border-gray-300 text-gray-900 px-4 py-3 rounded-lg mb-4"
+							>
 								{passwordError}
 							</div>
 						{/if}
@@ -378,7 +394,13 @@
 							</div>
 						{/if}
 
-						<form onsubmit={(e) => { e.preventDefault(); handleChangePassword(); }} class="space-y-4">
+						<form
+							onsubmit={(e) => {
+								e.preventDefault();
+								handleChangePassword();
+							}}
+							class="space-y-4"
+						>
 							<div>
 								<label for="currentPassword" class="block text-sm font-medium text-gray-700 mb-2">
 									Contraseña Actual
@@ -405,11 +427,16 @@
 									class="input-minimal"
 									placeholder="••••••••"
 								/>
-								<p class="mt-1 text-xs text-gray-500">Mínimo 10 caracteres, con al menos una letra y un número</p>
+								<p class="mt-1 text-xs text-gray-500">
+									Mínimo 10 caracteres, con al menos una letra y un número
+								</p>
 							</div>
 
 							<div>
-								<label for="confirmNewPassword" class="block text-sm font-medium text-gray-700 mb-2">
+								<label
+									for="confirmNewPassword"
+									class="block text-sm font-medium text-gray-700 mb-2"
+								>
 									Confirmar Nueva Contraseña
 								</label>
 								<input
@@ -437,9 +464,9 @@
 						<div class="bg-amber-50 border border-amber-200 rounded-xl p-6 md:col-span-2">
 							<h2 class="text-lg font-bold text-amber-900 mb-2">Confirma tu correo</h2>
 							<p class="text-sm text-amber-900 mb-4">
-								Todavía no has confirmado <strong>{verificacion.email}</strong>. Mientras no
-								lo hagas no podremos devolverte el acceso si olvidas tu contraseña, y no te
-								enviaremos recordatorios. Puedes seguir usando la aplicación con normalidad.
+								Todavía no has confirmado <strong>{verificacion.email}</strong>. Mientras no lo
+								hagas no podremos devolverte el acceso si olvidas tu contraseña, y no te enviaremos
+								recordatorios. Puedes seguir usando la aplicación con normalidad.
 							</p>
 
 							{#if mensajeVerificacion}
@@ -460,12 +487,14 @@
 					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:col-span-2">
 						<h2 class="text-xl font-bold text-gray-900 mb-2">Dispositivos conectados</h2>
 						<p class="text-sm text-gray-600 mb-6">
-							Aquí aparece dónde tienes la sesión abierta. Si ves algo que no reconoces,
-							ciérralo y cambia tu contraseña.
+							Aquí aparece dónde tienes la sesión abierta. Si ves algo que no reconoces, ciérralo y
+							cambia tu contraseña.
 						</p>
 
 						{#if errorSesiones}
-							<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+							<div
+								class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm"
+							>
 								{errorSesiones}
 							</div>
 						{/if}
@@ -482,7 +511,9 @@
 											<p class="font-medium text-gray-900">
 												{sesion.dispositivo}
 												{#if sesion.esActual}
-													<span class="ml-2 text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+													<span
+														class="ml-2 text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"
+													>
 														Este dispositivo
 													</span>
 												{/if}
@@ -509,8 +540,8 @@
 					<div class="bg-white rounded-xl shadow-sm border border-red-200 p-8 md:col-span-2">
 						<h2 class="text-xl font-bold text-gray-900 mb-2">Eliminar mi cuenta</h2>
 						<p class="text-sm text-gray-600 mb-6">
-							Se borrarán tu cuenta y todo lo que has registrado: tarjetas, ingresos,
-							egresos, préstamos y pagos. No se puede deshacer y no guardamos copias.
+							Se borrarán tu cuenta y todo lo que has registrado: tarjetas, ingresos, egresos,
+							préstamos y pagos. No se puede deshacer y no guardamos copias.
 						</p>
 
 						{#if !mostrarEliminar}
@@ -522,7 +553,9 @@
 							</button>
 						{:else}
 							{#if errorEliminar}
-								<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+								<div
+									class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm"
+								>
 									{errorEliminar}
 								</div>
 							{/if}

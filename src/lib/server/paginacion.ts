@@ -11,7 +11,12 @@ export interface Paginacion {
 	offset: number;
 }
 
-function enteroSeguro(valor: string | null, porDefecto: number, minimo: number, maximo: number): number {
+function enteroSeguro(
+	valor: string | null,
+	porDefecto: number,
+	minimo: number,
+	maximo: number
+): number {
 	if (valor === null || valor.trim() === '') return porDefecto;
 
 	const numero = Number.parseInt(valor, 10);

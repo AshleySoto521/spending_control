@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { textoLimpio } from '$lib/server/validacion';
 
 // GET - Obtener datos del usuario actual
@@ -19,8 +19,8 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		return json({ user: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener usuario:', error);
@@ -59,8 +59,8 @@ export const PUT: RequestHandler = async (event) => {
 		);
 
 		return json({ success: true, user: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al actualizar usuario:', error);

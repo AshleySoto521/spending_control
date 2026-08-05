@@ -50,15 +50,15 @@
 		{#if !enlaceCompleto}
 			<h1 class="text-2xl font-bold text-gray-900 mb-3">Enlace incompleto</h1>
 			<p class="text-gray-700">
-				El enlace que abriste no trae toda la información. Abre de nuevo el que viene al
-				final del correo de recordatorio.
+				El enlace que abriste no trae toda la información. Abre de nuevo el que viene al final del
+				correo de recordatorio.
 			</p>
 		{:else if estado === 'listo'}
 			<h1 class="text-2xl font-bold text-gray-900 mb-3">Listo</h1>
 			<p class="text-gray-700 mb-4">No volveremos a enviarte recordatorios de inactividad.</p>
 			<p class="text-sm text-gray-600 mb-6">
-				Seguirás recibiendo los correos necesarios para tu cuenta, como el de recuperación
-				de contraseña. Tu información y tus movimientos no se han modificado.
+				Seguirás recibiendo los correos necesarios para tu cuenta, como el de recuperación de
+				contraseña. Tu información y tus movimientos no se han modificado.
 			</p>
 			<a href="/login" class="text-gray-900 font-semibold hover:underline">
 				Ir a Control de Gastos

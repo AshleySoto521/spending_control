@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query, getClient } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero, fechaISO } from '$lib/server/validacion';
 
 // GET - Obtener un pago específico
@@ -38,8 +38,8 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		return json(result.rows[0]);
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener pago:', error);
@@ -173,8 +173,8 @@ export const PUT: RequestHandler = async (event) => {
 		} finally {
 			client.release();
 		}
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al actualizar pago:', error);
@@ -206,14 +206,14 @@ export const DELETE: RequestHandler = async (event) => {
 		// (migración 013) retira además el egreso que este pago había generado.
 		// Antes ese egreso se quedaba huérfano restando del saldo para siempre,
 		// porque aquí nunca se borraba y no existía forma de identificarlo.
-		await query(
-			`DELETE FROM pagos_tarjetas WHERE id_pago = $1 AND id_usuario = $2`,
-			[pagoId, userId]
-		);
+		await query(`DELETE FROM pagos_tarjetas WHERE id_pago = $1 AND id_usuario = $2`, [
+			pagoId,
+			userId
+		]);
 
 		return json({ message: 'Pago eliminado correctamente' });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al eliminar pago:', error);

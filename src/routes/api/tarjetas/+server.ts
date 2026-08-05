@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { validarUltimosDigitos, textoLimpio } from '$lib/server/validacion';
 
 // GET - Obtener todas las tarjetas del usuario
@@ -34,8 +34,8 @@ export const GET: RequestHandler = async (event) => {
 		);
 
 		return json({ tarjetas: result.rows });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al obtener tarjetas:', error);
@@ -47,8 +47,16 @@ export const GET: RequestHandler = async (event) => {
 export const POST: RequestHandler = async (event) => {
 	try {
 		const userId = await requireAuth(event);
-		const { num_tarjeta, nom_tarjeta, tipo_tarjeta, clabe, banco, linea_credito, dia_corte, dias_gracia } =
-			await event.request.json();
+		const {
+			num_tarjeta,
+			nom_tarjeta,
+			tipo_tarjeta,
+			clabe,
+			banco,
+			linea_credito,
+			dia_corte,
+			dias_gracia
+		} = await event.request.json();
 
 		// Se normalizan antes de validar: así «BBVA » y «BBVA» dejan de ser dos
 		// instituciones distintas en la base.
@@ -91,7 +99,7 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Para tarjetas de servicios, la línea de crédito es NULL
-		const lineaCreditoFinal = tipo_tarjeta === 'servicios' ? null : (linea_credito || 0);
+		const lineaCreditoFinal = tipo_tarjeta === 'servicios' ? null : linea_credito || 0;
 
 		const result = await query(
 			`INSERT INTO tarjetas
@@ -112,8 +120,8 @@ export const POST: RequestHandler = async (event) => {
 		);
 
 		return json({ success: true, tarjeta: result.rows[0] }, { status: 201 });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al crear tarjeta:', error);

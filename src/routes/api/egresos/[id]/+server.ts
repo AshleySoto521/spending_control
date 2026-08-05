@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
-import { requireAuth } from '$lib/server/middleware';
+import { requireAuth, esRespuestaDeAuth } from '$lib/server/middleware';
 import { idEntero } from '$lib/server/validacion';
 
 // PUT - Actualizar egreso
@@ -30,7 +30,10 @@ export const PUT: RequestHandler = async (event) => {
 			if (data.num_meses && ![3, 6, 9, 12, 15, 18, 24, 36, 48].includes(data.num_meses)) {
 				return json({ error: 'Número de meses inválido' }, { status: 400 });
 			}
-			if (data.mes_inicio_pago !== undefined && (data.mes_inicio_pago < 0 || data.mes_inicio_pago > 12)) {
+			if (
+				data.mes_inicio_pago !== undefined &&
+				(data.mes_inicio_pago < 0 || data.mes_inicio_pago > 12)
+			) {
 				return json({ error: 'Mes de inicio de pago inválido' }, { status: 400 });
 			}
 		}
@@ -64,7 +67,7 @@ export const PUT: RequestHandler = async (event) => {
 				data.descripcion,
 				data.compra_meses,
 				data.compra_meses ? data.num_meses : null,
-				data.compra_meses ? (data.mes_inicio_pago || 0) : null,
+				data.compra_meses ? data.mes_inicio_pago || 0 : null,
 				montoMensual,
 				id,
 				userId
@@ -72,8 +75,8 @@ export const PUT: RequestHandler = async (event) => {
 		);
 
 		return json({ success: true, egreso: result.rows[0] });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al actualizar egreso:', error);
@@ -101,8 +104,8 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		return json({ success: true, message: 'Egreso eliminado correctamente' });
-	} catch (error: any) {
-		if (error.status === 401) {
+	} catch (error) {
+		if (esRespuestaDeAuth(error)) {
 			return error;
 		}
 		console.error('Error al eliminar egreso:', error);
