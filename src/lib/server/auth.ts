@@ -1,0 +1,91 @@
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '$env/static/private';
+import { randomBytes } from 'node:crypto';
+
+const SALT_ROUNDS = 10;
+
+/**
+ * Algoritmo fijado explícitamente.
+ *
+ * `jwt.verify(token, secreto)` sin `algorithms` acepta cualquier algoritmo que
+ * el propio token declare en su cabecera. jsonwebtoken 9 ya rechaza `alg: none`
+ * y la confusión HMAC/RSA, pero fijarlo aquí deja de depender de ese detalle de
+ * la librería: solo se firma y solo se acepta HS256.
+ */
+const ALGORITMO = 'HS256' as const;
+
+export async function hashPassword(password: string): Promise<string> {
+	return await bcrypt.hash(password, SALT_ROUNDS);
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+	return await bcrypt.compare(password, hash);
+}
+
+let hashFicticio: Promise<string> | null = null;
+
+/**
+ * Hace el mismo trabajo que `verifyPassword` cuando el usuario no existe.
+ *
+ * Sin esto el login respondía decenas de milisegundos antes para un correo no
+ * registrado (no ejecutaba bcrypt), y midiendo el tiempo se distinguía «no
+ * existe» de «contraseña incorrecta». Siempre devuelve `false`.
+ */
+export async function verifyPasswordFicticio(password: string): Promise<false> {
+	hashFicticio ??= bcrypt.hash('contraseña-ficticia-para-igualar-tiempos', SALT_ROUNDS);
+	await bcrypt.compare(password, await hashFicticio);
+	return false;
+}
+
+/**
+ * Vigencia del JWT.
+ *
+ * Es el tope ABSOLUTO de una sesión, no su duración efectiva. Quien manda es la
+ * fila de `sesiones`: se renueva mientras la persona use la aplicación y caduca
+ * tras unas horas de inactividad. Si el JWT siguiera venciendo a las 4 horas,
+ * esa renovación sería imposible sin reemitir el token en mitad de la
+ * navegación, con el riesgo de que dos peticiones simultáneas se pisaran.
+ *
+ * Dicho de otro modo: el JWT solo transporta la identidad; la vida de la sesión
+ * la decide la base, que además se puede revocar.
+ */
+const VIGENCIA_TOKEN = '30d';
+
+export function generateToken(userId: string): string {
+	return jwt.sign({ userId }, JWT_SECRET, {
+		expiresIn: VIGENCIA_TOKEN,
+		algorithm: ALGORITMO
+	});
+}
+
+export function verifyToken(token: string): { userId: string } | null {
+	try {
+		const payload = jwt.verify(token, JWT_SECRET, { algorithms: [ALGORITMO] });
+
+		// Un token válido pero sin `userId` (o con un tipo inesperado) no sirve
+		// para identificar a nadie: se trata como inválido.
+		if (typeof payload === 'string' || typeof payload.userId !== 'string') return null;
+
+		return { userId: payload.userId };
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Token de recuperación de contraseña: 256 bits de aleatoriedad criptográfica.
+ *
+ * Antes se usaba `uuidv4()`, que solo aporta 122 bits y depende de un paquete
+ * externo. `randomBytes` viene de Node y no añade dependencias.
+ */
+export function generateResetToken(): string {
+	return randomBytes(32).toString('hex');
+}
+
+export function getTokenExpiration(): Date {
+	// Usar UTC para evitar problemas de zona horaria con la base de datos
+	const expiration = new Date();
+	expiration.setTime(expiration.getTime() + 60 * 60 * 1000); // 1 hora en milisegundos
+	return expiration;
+}

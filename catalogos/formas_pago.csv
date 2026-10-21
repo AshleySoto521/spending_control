@@ -1,0 +1,4 @@
+id_forma_pago,tipo,descriocion
+1,efectivo,para pagos en efectivo
+2,tarjeta,para pagos realizados con tarjeta de credito o debito
+3,transferencia,para pagos realizados con transferencia bancaria

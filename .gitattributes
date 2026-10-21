@@ -1,0 +1,24 @@
+# Normalización de finales de línea.
+#
+# `text=auto` hace que git guarde SIEMPRE LF en el repositorio y convierta al
+# checkout según la plataforma. Sin esto, trabajar en Windows marca cada archivo
+# del proyecto como modificado en cuanto algo reescribe los saltos de línea,
+# y los cambios reales quedan sepultados entre cientos de diffs falsos.
+* text=auto eol=lf
+
+# Los scripts de Windows necesitan CRLF para ejecutarse correctamente.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binarios: sin conversión.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.xlsx binary
+*.tgz  binary
+*.zip  binary

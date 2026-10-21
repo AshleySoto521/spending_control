@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Iconos PWA - Control de Gastos</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        canvas {
+            display: none;
+        }
+        button {
+            background: #1f2937;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #374151;
+        }
+        .preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .preview-item {
+            text-align: center;
+        }
+        .preview-item img {
+            width: 100%;
+            max-width: 96px;
+            height: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .preview-item span {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .instructions {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 6px;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Generador de Iconos PWA</h1>
+        <p class="subtitle">Control de Gastos MX</p>
+
+        <div class="instructions">
+            <h3>📋 Instrucciones:</h3>
+            <ol>
+                <li>Haz clic en "Generar Todos los Iconos"</li>
+                <li>Se generarán automáticamente todos los tamaños necesarios</li>
+                <li>Haz clic en "Descargar Todos" para obtener un ZIP</li>
+                <li>Extrae el ZIP y copia la carpeta "icons" a la carpeta "static/" de tu proyecto</li>
+            </ol>
+        </div>
+
+        <button onclick="generateAllIcons()">🎨 Generar Todos los Iconos</button>
+        <button onclick="downloadAll()" id="downloadBtn" style="display:none">📥 Descargar Todos (ZIP)</button>
+
+        <div class="status" id="status">
+            <strong>✅ ¡Iconos generados exitosamente!</strong><br>
+            Ahora puedes descargarlos todos en un archivo ZIP.
+        </div>
+
+        <div class="preview" id="preview"></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const generatedIcons = [];
+
+        function generateIcon(size) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = size;
+            canvas.height = size;
+
+            // Fondo degradado
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#1f2937');
+            gradient.addColorStop(1, '#374151');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Borde redondeado
+            ctx.beginPath();
+            const radius = size * 0.15;
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+
+            // Icono de dinero/dólar
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${size * 0.5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', size / 2, size / 2);
+
+            // Texto pequeño
+            ctx.font = `${size * 0.1}px Arial`;
+            ctx.fillText('CONTROL', size / 2, size * 0.8);
+
+            return canvas.toDataURL('image/png');
+        }
+
+        function generateAllIcons() {
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            generatedIcons.length = 0;
+
+            sizes.forEach(size => {
+                const dataUrl = generateIcon(size);
+                generatedIcons.push({ size, dataUrl });
+
+                const previewItem = document.createElement('div');
+                previewItem.className = 'preview-item';
+                previewItem.innerHTML = `
+                    <img src="${dataUrl}" alt="Icon ${size}x${size}">
+                    <span>${size}x${size}</span>
+                `;
+                preview.appendChild(previewItem);
+            });
+
+            document.getElementById('downloadBtn').style.display = 'inline-block';
+            document.getElementById('status').classList.add('show');
+        }
+
+        async function downloadAll() {
+            const zip = new JSZip();
+            const iconsFolder = zip.folder('icons');
+
+            generatedIcons.forEach(({ size, dataUrl }) => {
+                const base64Data = dataUrl.split(',')[1];
+                iconsFolder.file(`icon-${size}x${size}.png`, base64Data, { base64: true });
+            });
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'pwa-icons.zip';
+            link.click();
+        }
+    </script>
+</body>
+</html>

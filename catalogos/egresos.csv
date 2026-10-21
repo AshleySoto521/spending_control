@@ -1,0 +1,4 @@
+id_egresos,fecha_egreso,concepto,establecimiento/persona,monto,id_forma_pago,id_tarjeta
+1,12/11/2025,supermercado,OXXO,125.56,1
+2,05/12/2025,comida,TIENDA,200.00,2,1
+3,04/12/2025,prestamo,JUAN PEREZ,150.00,3
