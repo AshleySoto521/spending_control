@@ -8,7 +8,9 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({
-			runtime: 'nodejs20.x'
+			// Vercel retiró nodejs20.x (fin de soporte de Node 20) y rechaza el
+			// despliegue si se pide. 24 es la LTS activa.
+			runtime: 'nodejs24.x'
 		}),
 
 		// Content-Security-Policy.
